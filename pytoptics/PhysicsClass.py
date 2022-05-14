@@ -19,70 +19,7 @@ class snell_refraction_vector_physics():
         pass
 
     def calculate(self, s1_norm, Nsurf_norm, n1, n2, empty1, empty2, empty3, empty4, Secuen):
-    #     """calculate.
-
-    #     Parameters
-    #     ----------
-    #     s1_norm :
-    #         s1_norm
-    #     Nsurf_norm :
-    #         Nsurf_norm
-    #     n1 :
-    #         n1
-    #     n2 :
-    #         n2
-    #     empty1 :
-    #         empty1
-    #     empty2 :
-    #         empty2
-    #     empty3 :
-    #         empty3
-    #     empty4 :
-    #         empty4
-    #     Secuen :
-    #         Secuen
-    #     """
-
-    #     cos = (np.dot(Nsurf_norm, s1_norm))
-
-    #     if (cos < (- 1.0)):
-    #         ang = 180
-    #     else:
-    #         ang = np.rad2deg(np.arccos(cos))
-
-    #     if (ang <= 90.0):
-    #         Nsurf_norm = (- Nsurf_norm)
-
-    #     Nsurf_Cros_s1 = np.cross(Nsurf_norm, s1_norm)
-    #     SIGN = 1
-
-    #     if (n2 == (- 1)):
-    #         n2 = (- n1)
-    #         SIGN = (- 1)
-
-    #     NN = (n1 / n2)
-    #     d22=np.dot(Nsurf_Cros_s1, Nsurf_Cros_s1)
-    #     R = ((NN * NN) * d22)
-
-    #     if (Secuen == 1):
-    #         R = 2.0
-
-    #     if (R > 1):
-    #         n2 = (- n1)
-    #         NN = (n1 / n2)
-    #         R = ((NN * NN) * d22)
-    #         SIGN = (- 1)
-
-    #     s2 = ((NN * np.cross(Nsurf_norm, np.cross((- Nsurf_norm), s1_norm))) - (Nsurf_norm * np.sqrt((1.0 - ((NN * NN) * d22)))))
-
-
-    #     cos = np.dot([0, 0, 1], s2)
-
-    #     ang = np.rad2deg(np.arccos(cos))
-
-
-    #     return (s2, np.abs(n2), SIGN)
-
+    
         return calculate2(s1_norm, Nsurf_norm, n1, n2, empty1, empty2, empty3, empty4, Secuen)
 
 
@@ -116,8 +53,8 @@ S=normal superficie
     """
 
 
-    Nv = torch.tensor(Nsurf_norm).to(device)
-    Iv = torch.tensor(s1_norm).to(device)
+    Nv = Nsurf_norm
+    Iv = s1_norm
 
 
     """ checking if the normal to the surface is in the

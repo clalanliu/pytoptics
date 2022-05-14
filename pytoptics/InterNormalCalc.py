@@ -46,7 +46,7 @@ class InterNormalCalc():
 
         self.P1 = torch.tensor([0.0, 0.0, 0.0, 1.0]).to(device)
         self.P2 = torch.tensor([0.0, 0.0, 0.0, 1.0]).to(device)
-        self.P_z1 = 10000000.0
+        self.P_z1 = torch.tensor(10000000.0).to(device)
 
     def __SigmaHitTransfSpace(self, PP_start, PP_stop, j):
         """__SigmaHitTransfSpace.
@@ -60,23 +60,24 @@ class InterNormalCalc():
         j :
             j
         """
+        
         StopPoint = torch.tensor([PP_stop[0], PP_stop[1], PP_stop[2], 1.0]).to(device)
         StarPoint = torch.tensor([PP_start[0], PP_start[1], PP_start[2], 1.0]).to(device)
 
         SurfHit = 1
-        P_SurfHit = torch.mv(self.Pr3D.TRANS_1A[j], StopPoint).reshape((1,4))
-        Px1 = P_SurfHit[(0, 0)]
-        Py1 = P_SurfHit[(0, 1)]
-        Pz1 = P_SurfHit[(0, 2)]
+        P_SurfHit = torch.mv(self.Pr3D.TRANS_1A[j], StopPoint)
+        Px1 = P_SurfHit[0]
+        Py1 = P_SurfHit[1]
+        Pz1 = P_SurfHit[2]
 
-        P_start = torch.mv(self.Pr3D.TRANS_1A[j], StarPoint).reshape((1,4))
-        P_x1 = P_start[(0, 0)]
-        P_y1 = P_start[(0, 1)]
-        P_z1 = P_start[(0, 2)]
+        P_start = torch.mv(self.Pr3D.TRANS_1A[j], StarPoint)
+        P_x1 = P_start[0]
+        P_y1 = P_start[1]
+        P_z1 = P_start[2]
 
-        P12 = torch.tensor([(Px1 - P_x1), (Py1 - P_y1), (Pz1 - P_z1)]).to(device)
+        P12 = (P_SurfHit - P_start)[:3]#torch.tensor([(Px1 - P_x1), (Py1 - P_y1), (Pz1 - P_z1)]).to(device)
         [L, M, N] = (P12 / torch.linalg.norm(P12))
-
+        
         Px1 = (((L / N) * (- P_z1)) + P_x1)
         Py1 = (((M / N) * (- P_z1)) + P_y1)
 
@@ -105,22 +106,22 @@ class InterNormalCalc():
         if (self.SDT[j].Thin_Lens == 0):
             self.vj = j
 
-            ASD=torch.sqrt(((Px1-self.SDT[j].SubAperture[2])**2) + ((Py1-self.SDT[j].SubAperture[1])**2))
+            ASD=torch.sqrt(((Px1-self.SDT[j].SubAperture[2])**2) + ((Py1-self.SDT[j].SubAperture[1])**2) + torch_eps)
             D0 = (2.0 * ASD)
             DiamInf = ((self.SDT[j].InDiameter * self.SDT[j].SubAperture[0]) * self.Disable_Inner)
             DiamSup = ((self.SDT[j].Diameter * self.SDT[j].SubAperture[0]) + (10000.0 * self.ExtraDiameter))
             if ((D0 > DiamSup) or (D0 < DiamInf)):
                 SurfHit = 0
-                P_x2 = 0
-                P_y2 = 0
-                P_z2 = 0
+                P_x2 = torch.tensor(0).to(device)
+                P_y2 = torch.tensor(0).to(device)
+                P_z2 = torch.tensor(0).to(device)
             else:
                 (P_x2, P_y2, P_z2) = self.HS.SolveHit(Px1, Py1, Pz1, L, M, N, j)
                 if (not math.isnan(P_z2)):
                     P_x2 = self.HS.vevaX
                     P_y2 = self.HS.vevaY
 
-                    ASD=torch.sqrt(((Px1-self.SDT[j].SubAperture[2])**2) + ((Py1-self.SDT[j].SubAperture[1])**2))
+                    ASD=torch.sqrt(((Px1-self.SDT[j].SubAperture[2])**2) + ((Py1-self.SDT[j].SubAperture[1])**2) + torch_eps)
                     D0 = (2.0 * ASD)
 
                     DiamInf = ((self.SDT[j].InDiameter * self.SDT[j].SubAperture[0]) * self.Disable_Inner)
@@ -129,24 +130,24 @@ class InterNormalCalc():
                         SurfHit = 0
                 else:
                     SurfHit = 0
-                    P_x2 = 0
-                    P_y2 = 0
-                    P_z2 = 0
+                    P_x2 = torch.tensor(0).to(device)
+                    P_y2 = torch.tensor(0).to(device)
+                    P_z2 = torch.tensor(0).to(device)
         else:
-            ASD=torch.sqrt(((Px1 - self.SDT[j].SubAperture[2])**2) + ((Py1 - self.SDT[j].SubAperture[1])**2))
+            ASD=torch.sqrt(((Px1 - self.SDT[j].SubAperture[2])**2) + ((Py1 - self.SDT[j].SubAperture[1])**2) + torch_eps)
             D0 = (2.0 * ASD)
 
             if ((D0 > self.SDT[j].Diameter * self.SDT[j].SubAperture[0]) or (D0 < self.SDT[j].InDiameter * self.SDT[j].SubAperture[0] )):
                 SurfHit = 0
-                P_x2 = 0
-                P_y2 = 0
-                P_z2 = 0
+                P_x2 = torch.tensor(0).to(device)
+                P_y2 = torch.tensor(0).to(device)
+                P_z2 = torch.tensor(0).to(device)
 
             else:
                 P_x2 = ((L / N) * self.SDT[j].Thin_Lens)
                 P_y2 = ((M / N) * self.SDT[j].Thin_Lens)
                 P_z2 = self.SDT[j].Thin_Lens
-
+    
         return (SurfHit, P_x2, P_y2, P_z2, Px1, Py1, Pz1, L, M, N)
 
     def __SigmaHitTransfSpaceFast(self, PP_start, PP_stop, j):
@@ -248,24 +249,27 @@ class InterNormalCalc():
         P_y1 = ((Pz1z2 * (New_M / New_N)) + P_y2)
 
 
-        self.P1[0], self.P1[1], self.P1[2] = P_x1, P_y1, self.P_z1
-        self.P2[0], self.P2[1], self.P2[2] = P_x2, P_y2, P_z2
+        #self.P1[0], self.P1[1], self.P1[2] = P_x1, P_y1, self.P_z1
+        #self.P2[0], self.P2[1], self.P2[2] = P_x2, P_y2, P_z2
+        self.P1 = torch.stack([P_x1, P_y1, self.P_z1, self.P1[3]])
+        self.P2 = torch.stack([P_x2, P_y2, P_z2, self.P2[3]])
 
-        NP1 = torch.mv(self.TRANS_2A[j], self.P1).reshape(1, 4)
-        NP2 = torch.mv(self.TRANS_2A[j], self.P2).reshape(1, 4)
+        NP1 = torch.mv(self.TRANS_2A[j], self.P1)
+        NP2 = torch.mv(self.TRANS_2A[j], self.P2)
+
+        self.Pn = - (NP1[:3] - NP2[:3])
+        #self.Pn[0] = - (NP1[(0, 0)] - NP2[(0, 0)])
+        #self.Pn[1] = - (NP1[(0, 1)] - NP2[(0, 1)])
+        #self.Pn[2] = - (NP1[(0, 2)] - NP2[(0, 2)])
 
 
-        self.Pn[0] = - (NP1[(0, 0)] - NP2[(0, 0)])
-        self.Pn[1] = - (NP1[(0, 1)] - NP2[(0, 1)])
-        self.Pn[2] = - (NP1[(0, 2)] - NP2[(0, 2)])
-
-
-        LNOR=torch.sqrt((self.Pn[0]**2.)+(self.Pn[1]**2.)+(self.Pn[2]**2.))
+        #LNOR=torch.sqrt((self.Pn[0]**2.)+(self.Pn[1]**2.)+(self.Pn[2]**2.) + torch_eps)
+        LNOR = torch.norm(self.Pn[:3])  
 
         norm = (self.Pn / LNOR)
 
-        PTO_exit = [NP2[(0, 0)], NP2[(0, 1)], NP2[(0, 2)]]
-        PTO_exit_Object_Space = [P_x2, P_y2, P_z2]
+        PTO_exit = NP2[:3]#[NP2[(0, 0)], NP2[(0, 1)], NP2[(0, 2)]]
+        PTO_exit_Object_Space = torch.stack([P_x2, P_y2, P_z2])
 
 
         return (norm, PTO_exit, PTO_exit_Object_Space)
@@ -317,8 +321,20 @@ class InterNormalCalc():
         """
 
 
-        self.P1[0], self.P1[1], self.P1[2] = 0, 0, 0
-        self.P2[0], self.P2[1], self.P2[2] = -torch.cos(torch.deg2rad(self.SDT[j].Grating_Angle)), -torch.sin(torch.deg2rad(self.SDT[j].Grating_Angle)),0
+        #self.P1[0], self.P1[1], self.P1[2] = 0, 0, 0
+        self.P1 = torch.stack([
+            torch.tensor(0).to(device), 
+            torch.tensor(0).to(device), 
+            torch.tensor(0).to(device), 
+            self.P1[3]
+            ])
+        #self.P2[0], self.P2[1], self.P2[2] = -torch.cos(torch.deg2rad(self.SDT[j].Grating_Angle)), -torch.sin(torch.deg2rad(self.SDT[j].Grating_Angle)),0
+        self.P2 = torch.stack([
+            -torch.cos(torch.deg2rad(self.SDT[j].Grating_Angle)), 
+            -torch.sin(torch.deg2rad(self.SDT[j].Grating_Angle)),
+            torch.tensor(0).to(device), 
+            self.P2[3] 
+            ])
 
         NP1 = self.TRANS_2A[j].dot(self.P1)
         NP2 = self.TRANS_2A[j].dot(self.P2)
@@ -328,14 +344,9 @@ class InterNormalCalc():
         self.Pn[1] = - (NP1[(0, 1)] - NP2[(0, 1)])
         self.Pn[2] = - (NP1[(0, 2)] - NP2[(0, 2)])
 
-
-        LNOR=torch.sqrt((self.Pn[0]**2.)+(self.Pn[1]**2.)+(self.Pn[2]**2.))
+        LNOR = torch.norm(self.Pn[:3])  
 
         Pg_v = (self.Pn / LNOR)
-
-
-
-
 
         return Pg_v
 
@@ -353,10 +364,10 @@ class InterNormalCalc():
         jj :
             jj
         """
-        PTO_exit = [0, 0, 0]
-        PTO_exit_Object_Space = [0, 0, 0]
-        LMN_exit_Object_Space = [0, 0, 1]
-        norm = [0, 0, 1]
+        PTO_exit = torch.tensor([0.0, 0.0, 0.0]).to(device)
+        PTO_exit_Object_Space = torch.tensor([0.0, 0.0, 0.0]).to(device)
+        LMN_exit_Object_Space = torch.tensor([0.0, 0.0, 1.0]).to(device)
+        norm = torch.tensor([0.0, 0.0, 1.0]).to(device)
         SurfHit = 1
 
         if (self.SDT[j].Diff_Ord == 0):
@@ -366,17 +377,15 @@ class InterNormalCalc():
             Pgn = self.__GrooveDirectionVector(j)
 
         if (self.TypeTotal[jj] == 0):
-            SurfHit = 1
+            #SurfHit = 1
             SurfHit = self.__HitOnMask(PP_start, PP_stop, j)
 
             if (SurfHit != 0):
 
                 (SurfHit, Px2, Py2, Pz2, Px1, Py1, Pz1, L, M, N) = self.__SigmaHitTransfSpace(PP_start, PP_stop, j)
-                LMN_exit_Object_Space = [L, M, N]
+                LMN_exit_Object_Space = torch.stack([L, M, N])
 
                 if (self.SDT[j].Thin_Lens == 0):
-
-
 
                     (norm, PTO_exit, PTO_exit_Object_Space) = self.__SigmaOutOrigSpace(Px2, Py2, Pz2, j)
 
@@ -384,7 +393,9 @@ class InterNormalCalc():
                     (norm, PTO_exit, PTO_exit_Object_Space) = self.__ParaxCalcObjOut2OrigSpace(Px2, Py2, Pz2, Px1, Py1, Pz1, j)
         else:
             (SurfHit, norm, PTO_exit, Pgn) = self.__InterNormalSolidObject(jj, PP_start, PP_stop)
-        return (SurfHit, torch.tensor(norm).to(device), torch.tensor(PTO_exit).to(device), torch.tensor(Pgn).to(device), torch.tensor(PTO_exit_Object_Space).to(device), torch.tensor(LMN_exit_Object_Space).to(device), j)
+        
+        return (SurfHit, norm, PTO_exit, torch.tensor(Pgn).to(device), PTO_exit_Object_Space, 
+            LMN_exit_Object_Space, j)
 
 
 

@@ -19,6 +19,7 @@ class raykeeper():
         System :
             System
         """
+        self.valid_set = []
         self.SYSTEM = System
         self.clean()
 
@@ -33,66 +34,14 @@ class raykeeper():
         """
         self.nelements = self.SYSTEM.n
         if (self.SYSTEM.val == 0):
+            self.valid_set = np.append(self.valid_set, 0)
             self.invalid_vld = np.append(self.vld, 0)
-            self.invalid_SURFACE.append(torch.asarray(self.SYSTEM.SURFACE))
-            self.invalid_NAME.append(torch.asarray(self.SYSTEM.NAME))
-            self.invalid_GLASS.append(torch.asarray(self.SYSTEM.GLASS))
-            self.invalid_S_XYZ.append(torch.asarray(self.SYSTEM.S_XYZ))
-            self.invalid_T_XYZ.append(torch.asarray(self.SYSTEM.T_XYZ))
-            self.invalid_XYZ.append(torch.asarray(self.SYSTEM.XYZ))
-            self.invalid_OST_XYZ.append(torch.asarray(self.SYSTEM.OST_XYZ))
-            self.invalid_S_LMN.append(torch.asarray(self.SYSTEM.S_LMN))
-            self.invalid_LMN.append(torch.asarray(self.SYSTEM.LMN))
-            self.invalid_R_LMN.append(torch.asarray(self.SYSTEM.R_LMN))
-            self.invalid_N0.append(torch.asarray(self.SYSTEM.N0))
-            self.invalid_N1.append(torch.asarray(self.SYSTEM.N1))
-            self.invalid_WAV.append(torch.asarray(self.SYSTEM.WAV))
-            self.invalid_G_LMN.append(torch.asarray(self.SYSTEM.G_LMN))
-            self.invalid_ORDER.append(torch.asarray(self.SYSTEM.ORDER))
-            self.invalid_GRATING.append(torch.asarray(self.SYSTEM.GRATING))
-            self.invalid_DISTANCE.append(torch.asarray(self.SYSTEM.DISTANCE))
-            self.invalid_OP.append(torch.asarray(self.SYSTEM.OP))
-            self.invalid_TOP_S.append(torch.asarray(self.SYSTEM.TOP_S))
-            self.invalid_TOP.append(torch.asarray(self.SYSTEM.TOP))
-            self.invalid_ALPHA.append(torch.asarray(self.SYSTEM.ALPHA))
-            self.invalid_BULK_TRANS.append(torch.asarray(self.SYSTEM.BULK_TRANS))
-            self.invalid_RP.append(torch.asarray(self.SYSTEM.RP))
-            self.invalid_RS.append(torch.asarray(self.SYSTEM.RS))
-            self.invalid_TP.append(torch.asarray(self.SYSTEM.TP))
-            self.invalid_TS.append(torch.asarray(self.SYSTEM.TS))
-            self.invalid_TTBE.append(torch.asarray(self.SYSTEM.TTBE))
-            self.invalid_TT.append(torch.asarray(self.SYSTEM.TT))
+            
         else:
+            self.valid_set = np.append(self.valid_set, 1)
             self.vld = np.append(self.vld, 1)
             self.valid_vld = np.append(self.vld, 0)
-            self.valid_SURFACE.append(torch.asarray(self.SYSTEM.SURFACE))
-            self.valid_NAME.append(np.asarray(self.SYSTEM.NAME))
-            self.valid_GLASS.append(np.asarray(self.SYSTEM.GLASS))
-            self.valid_S_XYZ.append(torch.vstack(self.SYSTEM.S_XYZ))
-            self.valid_T_XYZ.append(torch.vstack(self.SYSTEM.T_XYZ))
-            self.valid_XYZ.append(torch.vstack(self.SYSTEM.XYZ))
-            self.valid_OST_XYZ.append(torch.vstack(self.SYSTEM.OST_XYZ))
-            self.valid_S_LMN.append(torch.vstack(self.SYSTEM.S_LMN))
-            self.valid_LMN.append(torch.vstack(self.SYSTEM.LMN))
-            self.valid_R_LMN.append(torch.vstack(self.SYSTEM.R_LMN))
-            self.valid_N0.append(torch.asarray(self.SYSTEM.N0))
-            self.valid_N1.append(torch.asarray(self.SYSTEM.N1))
-            self.valid_WAV.append(torch.asarray(self.SYSTEM.WAV))
-            self.valid_G_LMN.append(torch.vstack(self.SYSTEM.G_LMN))
-            self.valid_ORDER.append(torch.asarray(self.SYSTEM.ORDER))
-            self.valid_GRATING.append(torch.asarray(self.SYSTEM.GRATING))
-            self.valid_DISTANCE.append(torch.asarray(self.SYSTEM.DISTANCE))
-            self.valid_OP.append(torch.asarray(self.SYSTEM.OP))
-            self.valid_TOP_S.append(torch.asarray(self.SYSTEM.TOP_S))
-            self.valid_TOP.append(torch.asarray(self.SYSTEM.TOP))
-            self.valid_ALPHA.append(torch.asarray(self.SYSTEM.ALPHA))
-            self.valid_BULK_TRANS.append(torch.asarray(self.SYSTEM.BULK_TRANS))
-            self.valid_RP.append(torch.asarray(self.SYSTEM.RP))
-            self.valid_RS.append(torch.asarray(self.SYSTEM.RS))
-            self.valid_TP.append(torch.asarray(self.SYSTEM.TP))
-            self.valid_TS.append(torch.asarray(self.SYSTEM.TS))
-            self.valid_TTBE.append(torch.asarray(self.SYSTEM.TTBE))
-            self.valid_TT.append(torch.asarray(self.SYSTEM.TT))
+            
         self.nrays = (self.nrays + 1)
 
 
@@ -118,8 +67,8 @@ class raykeeper():
         self.ORDER.append(torch.asarray(self.SYSTEM.ORDER))
         self.GRATING.append(torch.asarray(self.SYSTEM.GRATING))
         self.DISTANCE.append(torch.asarray(self.SYSTEM.DISTANCE))
-        self.OP.append(torch.asarray(self.SYSTEM.OP))
-        self.TOP_S.append(torch.asarray(self.SYSTEM.TOP_S))
+        self.OP.append(np.asarray(self.SYSTEM.OP))
+        self.TOP_S.append(np.asarray(self.SYSTEM.TOP_S))
         self.TOP.append(torch.asarray(self.SYSTEM.TOP))
         self.ALPHA.append(torch.asarray(self.SYSTEM.ALPHA))
         self.BULK_TRANS.append(torch.asarray(self.SYSTEM.BULK_TRANS))
@@ -133,10 +82,11 @@ class raykeeper():
     def clean(self):
         """clean.
         """
+        self.valid_set = []
         self.vld = torch.asarray([])
         self.nrays = 0
         self.RayWave = []
-        self.CC =[]
+        self.CC = []
         self.SURFACE = []
         self.NAME = []
         self.GLASS = []
@@ -165,66 +115,7 @@ class raykeeper():
         self.TS = []
         self.TTBE = []
         self.TT = []
-        self.valid_RayWave = []
-        self.valid_CCC = pv.MultiBlock()
-        self.valid_SURFACE = []
-        self.valid_NAME = []
-        self.valid_GLASS = []
-        self.valid_S_XYZ = []
-        self.valid_T_XYZ = []
-        self.valid_XYZ = []
-        self.valid_OST_XYZ = []
-        self.valid_S_LMN = []
-        self.valid_LMN = []
-        self.valid_R_LMN = []
-        self.valid_N0 = []
-        self.valid_N1 = []
-        self.valid_WAV = []
-        self.valid_G_LMN = []
-        self.valid_ORDER = []
-        self.valid_GRATING = []
-        self.valid_DISTANCE = []
-        self.valid_OP = []
-        self.valid_TOP_S = []
-        self.valid_TOP = []
-        self.valid_ALPHA = []
-        self.valid_BULK_TRANS = []
-        self.valid_RP = []
-        self.valid_RS = []
-        self.valid_TP = []
-        self.valid_TS = []
-        self.valid_TTBE = []
-        self.valid_TT = []
-        self.invalid_RayWave = []
-        self.invalid_CCC = pv.MultiBlock()
-        self.invalid_SURFACE = []
-        self.invalid_NAME = []
-        self.invalid_GLASS = []
-        self.invalid_S_XYZ = []
-        self.invalid_T_XYZ = []
-        self.invalid_XYZ = []
-        self.invalid_OST_XYZ = []
-        self.invalid_S_LMN = []
-        self.invalid_LMN = []
-        self.invalid_R_LMN = []
-        self.invalid_N0 = []
-        self.invalid_N1 = []
-        self.invalid_WAV = []
-        self.invalid_G_LMN = []
-        self.invalid_ORDER = []
-        self.invalid_GRATING = []
-        self.invalid_DISTANCE = []
-        self.invalid_OP = []
-        self.invalid_TOP_S = []
-        self.invalid_TOP = []
-        self.invalid_ALPHA = []
-        self.invalid_BULK_TRANS = []
-        self.invalid_RP = []
-        self.invalid_RS = []
-        self.invalid_TP = []
-        self.invalid_TS = []
-        self.invalid_TTBE = []
-        self.invalid_TT = []
+        
 
     def pick(self, N_ELEMENT=(- 1)):
         """pick.
@@ -240,9 +131,9 @@ class raykeeper():
             print("NULL surface has been chosen, the return values correspond to those of the previous surface")
 
         self.numsup = (self.nelements - 1)
-        self.xyz = self.valid_XYZ
-        self.lmn = self.valid_LMN
-        self.s = self.valid_SURFACE
+        self.xyz = [self.XYZ[i[0]] for i in np.argwhere(self.valid_set)]
+        self.lmn = [self.LMN[i[0]] for i in np.argwhere(self.valid_set)]
+        self.s = [self.SURFACE[i[0]] for i in np.argwhere(self.valid_set)]
         if ((N_ELEMENT < 0) or (N_ELEMENT > self.numsup)):
             N_ELEMENT = self.numsup
         else:
@@ -271,6 +162,8 @@ class raykeeper():
                 ray0 = self.xyz[d]
 
                 [x1, y1, z1] = ray0[N_ELEMENT]
+                ray0.retain_grad()
+                
                 X.append(x1)
                 Y.append(y1)
                 Z.append(z1)
@@ -283,6 +176,14 @@ class raykeeper():
                 L.append(l1)
                 M.append(m1)
                 N.append(n1)
-        return (torch.asarray(X), torch.asarray(Y), torch.asarray(Z), torch.asarray(L), torch.asarray(M), torch.asarray(N))
+
+        X_ = torch.stack(X)
+        Y_ = torch.stack(Y)
+        Z_ = torch.stack(Z)
+        L_ = torch.stack(L)
+        M_ = torch.stack(M)
+        N_ = torch.stack(N)
+
+        return (X_, Y_, Z_, L_,M_, N_)
 
 

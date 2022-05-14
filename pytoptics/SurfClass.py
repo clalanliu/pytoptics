@@ -11,28 +11,52 @@ from .Global import *
 torch.set_default_tensor_type(torchPrecision)
 device = torchdevice
 
-class surf(Kos.surf):
+class surf(torch.nn.Module, Kos.surf):
     
-    def __init__(self, KOS_surface):
-        for attribute, value in KOS_surface.__dict__.items():
-            if type(value) is float:
-                setattr(self, attribute, torch.nn.Parameter(torch.tensor(value).to(device)))
-            elif type(value) is list:
-                if len(value)==0:
-                    setattr(self, attribute, value)
-                elif (type(value[0]) is float) or (type(value[0]) is int):
-                    value_ = [torch.nn.Parameter(torch.tensor(float(v)).to(device)) for v in value]
-                    setattr(self, attribute, value_)
-                else:
-                    value_ = convert_surface(value)
-                    setattr(self, attribute, value_)
-            elif type(value) is tuple:
-                value_ = [torch.nn.Parameter(torch.tensor(float(v)).to(device)) for v in value]
-                setattr(self, attribute, value_)
-            elif type(value) is np.ndarray:
-                setattr(self, attribute, torch.nn.Parameter(torch.from_numpy(value.astype(np.float))).to(device))
-            else:
-                setattr(self, attribute, value)
+    def __init__(self):
+        super(surf, self).__init__()
+        self.Rc = torch.tensor(0.0).to(device)
+        self.Thickness = torch.tensor(1e-11).to(device)
+        self.Diameter = torch.tensor(1.0).to(device)
+        self.InDiameter = torch.tensor(0.0).to(device)
+        self.k = torch.tensor(0.0).to(device)
+        self.ZNK = torch.from_numpy(np.zeros(36)).to(device)
+        self.Glass = 'AIR'
+        self.DespX = torch.tensor(0.0).to(device)
+        self.DespY = torch.tensor(0.0).to(device)
+        self.DespZ = torch.tensor(0.0).to(device)
+        self.TiltX = torch.tensor(0.0).to(device)
+        self.TiltY = torch.tensor(0.0).to(device)
+        self.TiltZ = torch.tensor(0.0).to(device)
+        self.Order = 0.0
+        self.AxisMove = 1.0
+        self.Diff_Ord = 0.0
+        self.Grating_D = torch.tensor(0.0).to(device)
+        self.Grating_Angle = torch.tensor(0.0).to(device)
+        self.ShiftX = torch.tensor(0.0).to(device)
+        self.ShiftY = torch.tensor(0.0).to(device)
+        self.Mask_Type = 0.0
+
+        self.Mask_Shape = "None"
+        self.Solid_3d_stl = 'None'
+        self.Cylinder_Rxy_Ratio = torch.tensor(1.0).to(device)
+        self.Axicon = 0.0
+        self.AspherData = torch.from_numpy(np.zeros(200)).to(device)
+        self.ExtraData = torch.from_numpy(np.zeros(200)).to(device)
+        self.Thin_Lens = 0.0
+        self.Name = ''
+        self.Nm_Poss = (0.0, 0.0)
+        self.Note = 'None'
+        self.Drawing = 1.0
+        self.Color = [0, 0, 0]
+        self.Error_map = []
+        self.Res = 1
+        self.Surface_type = 0.0
+        self.SURF_FUNC = []
+        self.SPECIAL_SURF_FUNC = []
+        self.SURF_FUNC.append(conic__surf(0.0, 0.0, 1.0))
+        self.General_Status = self.update()
+        self.SubAperture = [1,0,0]
 
     def build_surface_function(self):
         """build_surface_function.
@@ -124,7 +148,7 @@ class surf(Kos.surf):
                 con=1
 
         if con == -1:
-            Z = 0.0 * torch.tensor(x).to(device)
+            Z = 0.0 * x
 
         return Z
 
@@ -146,3 +170,33 @@ def convert_surface(surface_list):
 
 
         
+
+
+
+
+''' Garbage
+def __init__(self, KOS_surface):
+        super(surf, self).__init__()
+        for attribute, value in KOS_surface.__dict__.items():
+            if (type(value) is float) and (attribute not in {'Surface_type'}):
+                setattr(self, attribute, torch.tensor(value).to(device)))
+            if type(value) is int and (attribute not in {'Surface_type'}):
+                setattr(self, attribute, torch.tensor(float(value)).to(device)))
+            elif type(value) is list:
+                if len(value)==0:
+                    setattr(self, attribute, value)
+                elif (type(value[0]) is float) or (type(value[0]) is int):
+                    value_ = [torch.tensor(float(v)).to(device)) for v in value]
+                    setattr(self, attribute, value_)
+                else:
+                    value_ = convert_surface(value)
+                    setattr(self, attribute, value_)
+            elif type(value) is tuple:
+                value_ = [torch.tensor(float(v)).to(device)) for v in value]
+                setattr(self, attribute, value_)
+            elif type(value) is np.ndarray:
+                setattr(self, attribute, torch.from_numpy(value.astype(np.float))).to(device))
+            else:
+                setattr(self, attribute, value)
+
+'''

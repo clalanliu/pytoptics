@@ -88,7 +88,7 @@ class Hit_Solver():
         AZ4=F[9+2]
         Dz=(AZ1+AZ2+AZ3+AZ4)/(12.0*self.delta)
 
-        Dr = torch.sqrt((((Dx ** 2.) + (Dy ** 2.)) + (Dz ** 2.)))
+        Dr = torch.sqrt((((Dx ** 2.) + (Dy ** 2.)) + (Dz ** 2.)) + torch_eps)
         return ((Dx / Dr), (Dy / Dr), (Dz / Dr))
 
 
@@ -124,7 +124,7 @@ class Hit_Solver():
         # Dy=(self.__xyzF(x,y+delta,z,j)-self.__xyzF(x,y-delta,z,j))/(2.0*delta)
         # Dz=(self.__xyzF(x,y,z+delta,j)-self.__xyzF(x,y,z-delta,j))/(2.0*delta)
 
-        Dr=torch.sqrt((Dx*Dx)+(Dy*Dy)+(Dz*Dz))
+        Dr=torch.sqrt((Dx*Dx)+(Dy*Dy)+(Dz*Dz) + torch_eps)
         return Dx/Dr,Dy/Dr,Dz/Dr
 
 

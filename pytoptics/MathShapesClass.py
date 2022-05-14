@@ -53,7 +53,7 @@ def even_asphere(x, y, E):
     E :
         E
     """
-    r = torch.sqrt(((x * x) + (y * y)))
+    r = torch.sqrt(((x * x) + (y * y)) + torch_eps)
     Z = 0.0 * torch.zeros_like(x).to(device)
     for i in range(1, 9):
         if (E[(i - 1)] != 0):
@@ -144,7 +144,7 @@ def CalculateCon(x, y, R_C , C_RXY_RATIO, KON):
     """
     if (R_C != 0.0):
         c = (1.0 / R_C)
-        s = torch.sqrt(((x * x) + ((y * C_RXY_RATIO) * (y * C_RXY_RATIO))))
+        s = torch.sqrt(((x * x) + ((y * C_RXY_RATIO) * (y * C_RXY_RATIO))) + torch_eps)
         InRoot = (1 - (((((KON + 1.0) * c) * c) * s) * s))
         z = (((c * s) * s) / (1.0 + torch.sqrt(InRoot)))
     else:
@@ -198,7 +198,7 @@ def CalculateAxic( x, y, C_RXY_RATIO, AXC):
         y
     """
     if (AXC != 0.0):
-        s = torch.sqrt(((x * x) + ((y * C_RXY_RATIO) * (y * C_RXY_RATIO))))
+        s = torch.sqrt(((x * x) + ((y * C_RXY_RATIO) * (y * C_RXY_RATIO))) + torch_eps)
         z_axicon = (s * torch.tan(torch.deg2rad(AXC)))
     else:
         z_axicon = 0.0 * torch.zeros_like(x).to(device)
@@ -345,7 +345,7 @@ def CalculateZern( x, y, Z_POL, Z_POW, COEF, DMTR):
     ZSP = 0.0*torch.zeros_like(x).to(device)
     for i in range(0, COEF.shape[0]):
         if (COEF[i] != 0):
-            p = (torch.sqrt(((x * x) + (y * y))) / (DMTR / 2.0))
+            p = torch.sqrt(((x * x) + (y * y)) + torch_eps) / (DMTR / 2.0)
             f = torch.arctan2(x, y)
             ZSP = (ZSP + (COEF[i] * zernike_polynomials(i, p, f, Z_POL, Z_POW)))
     return ZSP

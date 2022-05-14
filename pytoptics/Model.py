@@ -1,215 +1,143 @@
-# from numba import jit
-
-import numpy as np
-import os
-import sys
-import random
-import inspect
-
+from .SurfClass import *
+from .RayKeeper import *
 from .SurfTools import surface_tools as SUT
 from .Prerequisites3D import *
-
 from .Physics import *
 from .HitOnSurf import *
 from .InterNormalCalc import *
+from .MathUtil import *
 
-import timeit
+from enum import Enum
+import KrakenOS as Kos
 import torch
 from .Global import *
 torch.set_default_tensor_type(torchPrecision)
 device = torchdevice
 
-
-# from .__init__ import RUTE as ModRute
-
-def prob(pro):
-    """prob.
-
-    Parameters
-    ----------
-    pro :
-        pro
+class FieldType(Enum):
     """
-    a_list = [0, 1]
-    prob = pro
-    distribution = [prob, (1.0 - prob)]
-    random_number = random.choices(a_list, distribution)
-    return random_number
+    ANGLE
 
-class system():
-
-
-    # print(ModRute)
-
-    """system.
-            SYSTEM CLASS ATRIBUTES AND IMPLEMENTATIONS:
-
-
-          system.Trace (pS, dC, wV)
-             Sequential ray tracing.
-             pS = [1.0, 0.0, 0.0] – Ray origin coordinates
-             dC = [0.0,0.0,1.0] - The directing cosines
-             wV = 0.4 - Wavelength
-
-
-          system.NsTrace (pS, dC, wV)
-             Non-Sequential ray tracing
-
-
-          system.Parax (w)
-             Paraxial optics calculations
-
-
-          system.disable_inner
-             Enables the central aperture.
-
-
-          system.enable_inner
-             Disables the central aperture.
-
-
-          system.SURFACE
-	    Returns the surfaces the ray passed through.
-
-
-          system.NAME
-        	    Returns surface names that the ray passed through
-
-
-          system.GLASS
-        	    Returns materials that the ray passed through.
-
-
-          system.XYZ
-             [X, Y, Z] ray coordinates from its origin to the image plane.
-
-
-          system.OST_XYZ
-             [X, Y, Z] coordinates of ray intersections in reference to
-            a coordinate system at its vertex, even if this vertex has
-            a translation or rotation.
-
-
-          system.DISTANCE
-             List of distances traveled by the ray.
-
-
-          system.OP
-        	List of optical paths.
-
-
-          system.TOP
-        	Total optical path.
-
-
-          system.TOP_S     List of the ray's optical path by sections.
-
-
-          system.ALPHA
-             List the materials absorption coefficients
-
-
-          system.BULK_TRANS
-             List the transmission through all the system absorption
-             coefficients are considered.
-
-
-          system.S_LMN
-             Surface normal direction cosines [L, M, N].
-
-
-          system.LMN
-             incident ray direction cosines [L, M, N].
-
-
-          system.R_LMN
-             Resulting ray direction cosines [L, M, N].
-
-
-          system.N0
-             Refractive indices before and after each interface
-
-
-          system.N1
-             Refractive indices after each interface.
-             This is useful to differentiate between index
-             before and after an iteration. Example:
-
-             N0 = [n1, n2, n3, n4, n5]
-             N1 = [n2, n3, n4, n5, n5]
-
-
-          system.WAV
-        	    Wavelength of the ray (µm)
-
-
-          system.G_LMN
-             [L, M, N] Direction cosines that define the lines
-             on the diffraction grating on the plane.
-
-
-          system.ORDER
-        	     Ray diffraction order.
-
-
-          system.GRATING_D
-	     Distance between lines of the diffraction grating.
-             Units (Microns)
-
-
-          system.RP
-	     Fresnel reflection coefficients for polarization P.
-
-
-          system.RS
-             Fresnel reflection coefficients for polarization S.
-
-
-          system.TP
-            Fresnel transmission coefficients for polarization P.
-
-
-          system.TS
-            Fresnel transmission coefficients for polarization S.
-
-
-          system.TTBE
-            Total energy transmitted or reflected per element.
-
-
-          system.TT
-            Total energy transmitted or reflected total.
-
-
-          system.targ_surf (int)
-            Limits the ray tracing to the defined surface
-
-
-          system.flat_surf (int)
-            Change a surface to flat.
-
+    OBJECT_HEIGHT
     """
+    ANGLE = 1
+    OBJECT_HEIGHT = 2
+
+class ApertureType(Enum):
+    """
+    ENTRANCE_PUPIL_DIAMETER
+
+    NUMERICAL_APERTURE_OBJECT
+    """
+    ENTRANCE_PUPIL_DIAMETER = 1
+    NUMERICAL_APERTURE_OBJECT = 2
 
 
-    def __init__(self, SurfData, KN_Setup):
-        """__init__.
+class OpticalSystem(torch.nn.Module):
+    def __init__(self, surface_num):
+        super().__init__()
+        self.surfaces = torch.nn.ModuleList()
+        for i in range(surface_num):
+            self.surfaces.append(surf())
 
-        Parameters
-        ----------
-        SurfData :
-            SurfData
-        KN_Setup :
-            KN_Setup
+
+    def Initialize(self):
+        config_ = Kos.Setup()
+        self.__init_system(self.surfaces, config_)
+
+    def SetAperture(self, aperture_type: ApertureType, aperture_value: float):
+        """Setting Aperture of the system
+
+        aperture_type: ApertureType
+        aperture_value: value
         """
-        self.ExectTime=[]
+        self.aperture_type = aperture_type
+        self.aperture_value = aperture_value
 
-        self.SDT = SurfData
+    def SetFields(self, field_type:FieldType, fields:list, field_sample_num:float = 3) -> None:
+        """Setting fields of the system
+
+        field_type: FieldType
+        fields: [[x, y, weight], ...]
+        field_sample_num: Number of samples in a direction
+        """
+        self.field_type = field_type 
+        self.fields = fields
+        self.field_sample_num = field_sample_num
+
+    def SetWavelength(self, wavelengths: list):
+        """Setting wavelength of the system
+
+        wavelengths: list of used wavelength
+        """
+        self.wavelengths = wavelengths
+
+    def Optimize_GradientDescent(self, lr=10, MNC=5, MXC=99999, IMP=0.0001, loss_criteria=0):
+        """Optimize system using gradient descent (SGD optimizer)
+
+        lr: learning rate
+        MNC: minimal number of cycles
+        MXC: maximal number of cycles
+        IMP: fractional improvement. If the improvements less than this amount five times continuously, optimization will be stopped
+        """
+        optimizer = torch.optim.SGD(self.parameters(), lr=lr)
+        loss_history = [np.finfo(0.0).max]
+        # Minimum cycles
+        for epoch in range(MNC):
+            self.print_variables()
+            optimizer.zero_grad()
+            X, Y, Z, L, M, N = self.Trace()
+            loss = torch.std(X, unbiased=False) + torch.std(Y, unbiased=False)
+            loss_history.append(loss.detach().cpu().numpy())
+            loss.backward(retain_graph=True)
+            print("Epoch {}: Loss = {}".format(epoch+1, loss_history[-1]))
+            optimizer.step()
+
+            if epoch < MNC - 1:
+                self.update_surfaces()
+
+        # Until maximal cycles
+        counter = 0
+        for epoch in range(MNC, MXC):
+            self.print_variables()
+            optimizer.zero_grad()
+            X, Y, Z, L, M, N = self.Trace()
+            loss = torch.std(X, unbiased=False) + torch.std(Y, unbiased=False)
+            loss_history.append(loss.detach().cpu().numpy())
+            # loss_criteria check
+            if loss_history[-1] < loss_criteria:
+                break
+
+            # IMP Check
+            if np.abs((loss_history[-1] - loss_history[-2])/loss_history[-2]) < IMP:
+                counter += 1
+            else:
+                counter = 0
+            if counter >= 5:
+                break
+
+            loss.backward(retain_graph=True)
+            print("Epoch {}: Loss = {}".format(epoch+1, loss_history[-1]))
+            optimizer.step()
+
+            if epoch < MXC - 1:
+                self.update_surfaces()
+
+        return X, Y, loss_history[1:]
+
+    # ______________________________________#
+    def print_variables(self):
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                print(name, param.data)
+
+    def update_surfaces(self):
+        self.SDT = self.surfaces
         self.update = False
         self.S_Matrix = []
         self.N_Matrix = []
-        self.SistemMatrix = torch.tensor([[1.0, 0.0], [0.0, 1.0]]).to(device)
+        self.SystemMatrix = torch.tensor([[1.0, 0.0], [0.0, 1.0]]).to(device)
         (self.a, self.b, self.c, self.d, self.EFFL, self.PPA, self.PPP) = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-        self.SETUP = KN_Setup
         self.n = len(self.SDT)
         for ii in range(0, self.n):
             self.SDT[ii].SaveSetup()
@@ -241,8 +169,45 @@ class system():
         self.Pr3D.Disable_Inner = 1
         (self.c_p, self.n_p, self.d_p) = (0, 0, 0)
         self.tt=1.
+        
+        self.rayskeepers = [[raykeeper(self) for _ in range(len(self.wavelengths))] for _ in range(len(self.fields))] 
 
-        # (ResVec, CurrN, sign) = self.SDT[2].PHYSICS.calculate([-0.01295049, 0.14862896 ,0.98880823], [-0., -0., -1.], 1.0, 1.0, [0., 1. ,0.], 0.0, 0.0, 0.6, 0.)
+
+    def Trace(self):
+        if self.field_type == FieldType.ANGLE:
+            #self.trace_parallel_light_with_Y_angle()
+            for f_i in range(len(self.fields)):
+                X = np.linspace(-self.aperture_value/2, self.aperture_value/2, self.field_sample_num)
+                Y = np.linspace(-self.aperture_value/2, self.aperture_value/2, self.field_sample_num)
+                for x in X:
+                    for y in Y:
+                        r = np.sqrt((x * x) + (y * y))
+                        if r <= self.aperture_value/2:
+                            pSource_0 = [x, y, 0.0]
+                            dCos = xy_to_direction_cosine(self.fields[f_i][0], self.fields[f_i][1])
+                            
+                            for w_i in range(len(self.wavelengths)):
+                                self.RayTrace(pSource_0, dCos, self.wavelengths[w_i])
+                                self.rayskeepers[f_i][w_i].push()
+                                
+            X, Y, Z, L, M, N = self.rayskeepers[0][0].pick(-1)
+            return X, Y, Z, L, M, N
+
+        
+    def __init_system(self, SurfData, KN_Setup):
+        """__init__.
+
+        Parameters
+        ----------
+        SurfData :
+            SurfData
+        KN_Setup :
+            KN_Setup
+        """
+        self.ExectTime=[]
+        self.SDT = SurfData
+        self.SETUP = KN_Setup
+        self.update_surfaces()
 
     def __SurFuncSuscrip(self):
         """__SurFuncSuscrip.
@@ -264,70 +229,18 @@ class system():
             if ((self.GlobGlass[i] == 'NULL') or (self.GlobGlass[i] == 'ABSORB')):
                 self.GlobGlass[i] = self.GlobGlass[(i - 1)]
 
-    def __NonSequentialChooserToot(self, A_RayOrig, A_Proto_pTarget, k):
-        """__NonSequentialChooserToot.
-
-        Parameters
-        ----------
-        A_RayOrig :
-            A_RayOrig
-        A_Proto_pTarget :
-            A_Proto_pTarget
-        k :
-            k
+    def __WavePrecalc(self):
+        """__WavePrecalc.: Calculate wave-dependent parameteres like refraction index 
         """
-        ng = self.GlassOnSide[k]
-        A_Glass = self.SDT[ng].Glass
-        if (A_Glass == 'NULL'):
-            distance = 99999999999999.9
-        else:
-            (A_pTarget, A_SurfHit) = self.EEE[k].ray_trace(A_RayOrig, A_Proto_pTarget)
-            if (len(A_SurfHit) == 0):
-                distance = 99999999999999.9
-            else:
-                s = 0
-                h = []
-                for f in A_SurfHit:
-                    PD = (torch.asarray(A_pTarget[s]) - torch.asarray(A_RayOrig))
-                    distance = torch.linalg.norm(PD)
-                    if (torch.abs(distance) < 0.05):
-                        distance = 99999999999999.9
-                    h.append(distance)
-                    s = (s + 1)
-                distance = torch.min(torch.asarray(h))
-        return distance
-
-    def __NonSequentialChooser(self, SIGN, A_RayOrig, ResVec, j):
-        """__NonSequentialChooser.
-
-        Parameters
-        ----------
-        SIGN :
-            SIGN
-        A_RayOrig :
-            A_RayOrig
-        ResVec :
-            ResVec
-        j :
-            j
-        """
-        chooser = []
-        [SLL, SMM, SNN] = ResVec
-        distance = 99999999999999.9
-        [Px, Py, Pz] = A_RayOrig
-        [LL, MM, NN] = ResVec
-        A_Proto_pTarget = (np.asarray(A_RayOrig) + ((np.asarray(ResVec) * 999999999.9) * SIGN))
-        for k in range(1, len(self.EEE)):
-            distance = self.__NonSequentialChooserToot(A_RayOrig, A_Proto_pTarget, k)
-            chooser.append(distance)
-        chooser = np.asarray(chooser)
-        jj = (np.argmin(chooser) + 1)
-        chooser[(jj - 1)] = 99999999999999.9
-        kk = (np.argmin(chooser) + 1)
-        (A_pTarget, A_SurfHit) = self.EEE[int(jj)].ray_trace(A_RayOrig, A_Proto_pTarget)
-        PRR = np.shape(A_SurfHit)[0]
-        return (int(j), int(jj), int(kk), PRR)
-
+        if (self.Wave != self.PreWave):
+            self.N_Prec = []
+            self.AlphaPrecal = []
+            self.PreWave = self.Wave
+            for i in range(0, self.n):
+                (NP, AP) = n_wave_dispersion(self.SETUP, self.GlobGlass[i], self.Wave)
+                self.N_Prec.append(NP)
+                self.AlphaPrecal.append(AP)
+    
     def __CollectDataInit(self):
         """__CollectDataInit.
         """
@@ -364,37 +277,6 @@ class system():
         self.TT = 1.0
         return None
 
-    def __EmptyCollect(self, pS, dC, WaveLength, j):
-        """__EmptyCollect.
-
-        Parameters
-        ----------
-        pS :
-            pS
-        dC :
-            dC
-        WaveLength :
-            WaveLength
-        j :
-            j
-        """
-        Empty = np.asarray([])
-        RayTraceType = 0
-        ValToSav = [Empty, Empty, pS, pS, Empty, Empty, dC, Empty, Empty, Empty, WaveLength, Empty, Empty, Empty, Empty, Empty, j, RayTraceType]
-        self.__CollectData(ValToSav)
-
-    def __WavePrecalc(self):
-        """__WavePrecalc.
-        """
-        if (self.Wave != self.PreWave):
-            self.N_Prec = []
-            self.AlphaPrecal = []
-            self.PreWave = self.Wave
-            for i in range(0, self.n):
-                (NP, AP) = n_wave_dispersion(self.SETUP, self.GlobGlass[i], self.Wave)
-                self.N_Prec.append(NP)
-                self.AlphaPrecal.append(AP)
-
     def __CollectData(self, ValToSav):
         """__CollectData.
 
@@ -423,9 +305,9 @@ class system():
         p = RayOrig - pTarget
         dist = torch.linalg.norm(p)
         self.DISTANCE.append(dist)
-        self.OP.append((dist * PrevN))
+        self.OP.append((dist * PrevN) if PrevN != [] else [])
 
-        self.TOP = (self.TOP + (dist * PrevN))
+        self.TOP = (self.TOP + (dist * PrevN)) if PrevN != [] else []
         self.TOP_S.append(self.TOP)
         self.ALPHA.append(alpha)
         self.S_LMN.append(SurfNorm)
@@ -467,123 +349,8 @@ class system():
 
         return None
 
-    def RestoreData(self):
-        """RestoreData.
-        """
-        for ii in range(0, self.n):
-            self.SDT[ii].RestoreSetup()
-        self.SetData()
 
-    def StoreData(self):
-        """StoreData.
-        """
-        for ii in range(0, self.n):
-            self.SDT[ii].SaveSetup()
-        self.SetData()
-
-    def SetData(self):
-        """SetData.
-        """
-        self.SuTo = SUT(self.SDT)
-        self.Object_Num = np.arange(0, self.n, 1)
-        self.__SurFuncSuscrip()
-        self.Pr3D.Prerequisites3SMath()
-        self.INORM = InterNormalCalc(self.SDT, self.TypeTotal, self.Pr3D, self.HS)
-
-    def SetSolid(self):
-        """SetSolid.
-        """
-        self.__SurFuncSuscrip()
-        self.Pr3D.Prerequisites3SMath()
-        self.Pr3D.Prerequisites3DSolids()
-        self.INORM = InterNormalCalc(self.SDT, self.TypeTotal, self.Pr3D, self.HS)
-        self.AAA = self.Pr3D.AAA
-        self.BBB = self.Pr3D.BBB
-        self.DDD = self.Pr3D.DDD
-        self.EEE = self.Pr3D.EEE
-        self.TRANS_1A = self.Pr3D.TRANS_1A
-        self.TRANS_2A = self.Pr3D.TRANS_2A
-
-    def Parax(self, W):
-        """Parax.
-
-        Parameters
-        ----------
-        W :
-            W
-        """
-        N_P = []
-        for i in range(0, self.n):
-            GlGl = self.GlobGlass[i]
-            (NP, AP) = n_wave_dispersion(self.SETUP, GlGl, W)
-            N_P.append(NP)
-        Prx = ParaxCalc(N_P, self.SDT, self.SuTo, self.n, self.Glass)
-        (self.SistemMatrix, self.S_Matrix, self.N_Matrix, self.a, self.b, self.c, self.d, self.EFFL, self.PPA, self.PPP, self.c_p, self.n_p, self.d_p) = Prx
-        return Prx
-
-    def TargSurf(self, tgsfP1):
-        """TargSurf.
-
-        Parameters
-        ----------
-        tgsfP1 :
-            tgsfP1
-        """
-        tgsf = (tgsfP1 + 1)
-        if (self.n >= tgsf > 0):
-            self.Targ_Surf = tgsf
-        else:
-            self.Targ_Surf = self.n
-
-    def SurfFlat(self, fltsf, Prep=0):
-        """SurfFlat.
-
-        Parameters
-        ----------
-        fltsf :
-            fltsf
-        Prep :
-            Prep
-        """
-        if (self.n >= fltsf > 0):
-            self.SuTo.Surface_Flattener = fltsf
-        else:
-            self.SuTo.Surface_Flattener = 0
-        if (Prep != 0):
-            self.Pr3D.Prerequisites3DSolids()
-
-    def IgnoreVignetting(self, Prep=0):
-        """IgnoreVignetting.
-
-        Parameters
-        ----------
-        Prep :
-            Prep
-        """
-        self.INORM.Disable_Inner = 0
-        self.Pr3D.Disable_Inner = 0
-        self.INORM.ExtraDiameter = 1
-        self.Pr3D.ExtraDiameter = 1
-        if (Prep != 0):
-            self.Pr3D.Prerequisites3DSolids()
-
-    def Vignetting(self, Prep=0):
-        """Vignetting.
-
-        Parameters
-        ----------
-        Prep :
-            Prep
-        """
-        self.INORM.Disable_Inner = 1
-        self.Pr3D.Disable_Inner = 1
-        self.INORM.ExtraDiameter = 0
-        self.Pr3D.ExtraDiameter = 0
-        if (Prep != 0):
-            self.Pr3D.Prerequisites3DSolids()
-
-
-    def Trace(self, pS, dC, WaveLength):
+    def RayTrace(self, pS, dC, WaveLength):
         """Trace.
 
         Parameters
@@ -598,15 +365,17 @@ class system():
         self.__CollectDataInit()
         ResVec = torch.tensor(dC).to(device)
         RayOrig = torch.tensor(pS).to(device)
-        self.RAY = []
+        
         self.Wave = WaveLength
-        self.RAY.append(RayOrig)
         self.__WavePrecalc()
         j = 0
         Glass = self.GlobGlass[j]
         (PrevN, alpha) = (self.N_Prec[j], self.AlphaPrecal[j])
         j = 1
         SIGN = torch.ones_like(ResVec).to(device)
+        
+        RAY = []
+        RAY.append(RayOrig)
         while True:
             if (j == self.Targ_Surf):
                 break
@@ -614,26 +383,12 @@ class system():
             Glass = self.GlobGlass[j_gg]
 
             if (self.Glass[j] != 'NULL'):
-                Proto_pTarget = (torch.tensor(RayOrig) + ((torch.tensor(ResVec) * 999999999.9) * SIGN)).to(device)
-
-
-                # start = timeit.default_timer()
+                Proto_pTarget = (RayOrig + ((ResVec * 999999999.9) * SIGN))
 
                 Output = self.INORM.InterNormal(RayOrig, Proto_pTarget, j, j)
 
-                # stop = timeit.default_timer()
-                # execution_time = stop - start
-                # self.ExectTime.append(execution_time)
-
-
-
-
-
-
-
-
                 (SurfHit, SurfNorm, pTarget, GooveVect, HitObjSpace, LMNObjSpace, j) = Output
-
+                
                 if (SurfHit == 0):
                     break
 
@@ -654,12 +409,13 @@ class system():
                 Name = self.SDT[j].Name
                 RayTraceType = 0
                 ValToSav = [Glass, alpha, RayOrig, pTarget, HitObjSpace, LMNObjSpace, SurfNorm, ImpVec, ResVec, PrevN, CurrN, WaveLength, D, Ord, GrSpa, Name, j, RayTraceType]
+
                 self.__CollectData(ValToSav)
                 PrevN = CurrN
                 RayOrig = pTarget
-                self.RAY.append(RayOrig)
+                RAY.append(RayOrig.clone())
 
-            if self.Glass[j] == 'NULL':
+            elif self.Glass[j] == 'NULL':
 
                 ValToSav = [Glass, alpha, RayOrig, pTarget, HitObjSpace, LMNObjSpace, SurfNorm, ImpVec, ResVec, PrevN, CurrN, WaveLength, D, Ord, GrSpa, Name, j, RayTraceType]
                 self.__CollectData(ValToSav)
@@ -667,37 +423,28 @@ class system():
             if self.Glass[j] == 'ABSORB':
                 break
 
-
-
-
-
-
-
-
             j = (j + 1)
-
+        
         if (len(self.GLASS) == 0):
             self.__CollectDataInit()
             self.val = 0
             self.__EmptyCollect(RayOrig, ResVec, WaveLength, j)
 
-        self.ray_SurfHits = torch.vstack(self.RAY)
-
+        self.ray_SurfHits = torch.vstack(RAY)
+        
         AT = torch.transpose(self.ray_SurfHits, 0, 1)
         self.Hit_x = AT[0]
         self.Hit_y = AT[1]
         self.Hit_z = AT[2]
 
 
-
-        # execution_time=np.mean(np.asarray(self.ExectTime))
-        # print(str(execution_time)," Segmentos")
-
-
         self.ExectTime=[]
 
-    def NsTrace(self, pS, dC, WaveLength):
-        """NsTrace.
+
+
+
+    def __EmptyCollect(self, pS, dC, WaveLength, j):
+        """__EmptyCollect.
 
         Parameters
         ----------
@@ -707,185 +454,13 @@ class system():
             dC
         WaveLength :
             WaveLength
+        j :
+            j
         """
-        global j_gg
-        pS = np.asarray(pS)
-        count = 0
-        a = 1
-        b = 2
-        self.__CollectDataInit()
-        ResVec = dC
-        RayOrig = pS
-        self.RAY = []
-        self.Wave = WaveLength
-        self.RAY.append(RayOrig)
-        self.__WavePrecalc()
-        j = 0
-        Glass = self.GlobGlass[j]
-        (PrevN, alpha) = (self.N_Prec[j], self.AlphaPrecal[j])
-        j = 0
-        SIGN = 1
-        while True:
-            if (j == self.Targ_Surf):
-                break
-            (a, b, c, PreSurfHit) = self.__NonSequentialChooser(SIGN, RayOrig, ResVec, j)
-            if (PreSurfHit == 0):
-                break
-            if (a < b):
-                j_gg = b
-            if (a > b):
-                j_gg = (b - 1)
-                if (self.Glass[(b - 1)] == 'MIRROR'):
-                    j_gg = b
-                if (self.Glass[b] == 'MIRROR'):
-                    j_gg = b
-            if (a == b):
-                j_gg = (b - 1)
-            j = b
-            jj = b
-            j = self.GlassOnSide[j]
-            j_gg = self.GlassOnSide[j_gg]
-            Glass = self.GlobGlass[j_gg]
-            if ((j == 0) or (count > 20) or (a == self.n)):
-                break
-            if (self.Glass[j] != 'NULL'):
-                Proto_pTarget = (np.asarray(RayOrig) + ((np.asarray(ResVec) * 999999999.9) * SIGN))
-                Output = self.INORM.InterNormal(RayOrig, Proto_pTarget, j, jj)
-                (SurfHit, SurfNorm, pTarget, GooveVect, HitObjSpace, LMNObjSpace, j) = Output
-                if (SurfHit == 0):
-                    break
-                ImpVec = np.asarray(ResVec)
-                (CurrN, alpha) = (self.N_Prec[j_gg], self.AlphaPrecal[j_gg])
-                S = np.asarray(ImpVec)
-                R = np.asarray(SurfNorm)
-                N = PrevN
-                Np = CurrN
-                if ((self.SDT[j].Solid_3d_stl == 'None') and (self.TypeTotal[jj] == 1)):
-                    if (N == 1):
-                        Np = CurrN
-                    else:
-                        N = CurrN
-                        Np = 1
-                D = GooveVect
-                Ord = self.SDT[j].Diff_Ord
-                GrSpa = self.SDT[j].Grating_D
-                Secuent = 0
-                (ResVec, CurrN, sign) = self.SDT[j].PHYSICS.calculate(ResVec, R, N, Np, D, Ord, GrSpa, self.Wave, Secuent)
-                (Rp0, Rs0, Tp0, Ts0) = FresnelEnergy(self.Glass[j], N, Np, ResVec, R, ResVec, self.SETUP, self.Wave)
-                self.tt = 1.0
-                if (self.Glass[j] != 'MIRROR'):
-                    self.tt = ((Tp0 + Ts0) / 2.0)
-                PROB = prob(self.tt)[0]
-                if (PROB > 0):
-                    Secuent = 1
-                    (ResVec, CurrN, sign) = self.SDT[j].PHYSICS.calculate(ResVec, R, N, Np, D, Ord, GrSpa, self.Wave, Secuent)
-                SIGN = (SIGN * sign)
-                Name = self.SDT[j].Name
-                RayTraceType = 1
-                ValToSav = [Glass, alpha, RayOrig, pTarget, HitObjSpace,LMNObjSpace, SurfNorm, ImpVec, ResVec, PrevN, CurrN, WaveLength, D, Ord, GrSpa, Name, j, RayTraceType]
-                self.__CollectData(ValToSav)
-                if (a == b):
-                    PrevN = PrevN
-                else:
-                    PrevN = CurrN
-                RayOrig = pTarget
-                self.RAY.append(RayOrig)
-
-
-
-
-
-
-            if self.Glass[j] == 'NULL':
-                ValToSav = [Glass, alpha, RayOrig, pTarget, HitObjSpace, SurfNorm, ImpVec, ResVec, PrevN, CurrN, WaveLength, D, Ord, GrSpa, Name, j, RayTraceType]
-                self.__CollectData(ValToSav)
-
-            if self.Glass[j] == 'ABSORB':
-                break
-
-
-
-
-
-
-            count = (count + 1)
-        if (len(self.GLASS) == 0):
-            self.__CollectDataInit()
-            self.val = 0
-            self.__EmptyCollect(pS, dC, WaveLength, j)
-        self.ray_SurfHits = np.asarray(self.RAY)
-        AT = torch.transpose(self.ray_SurfHits, 0, 1)
-        self.Hit_x = AT[0]
-        self.Hit_y = AT[1]
-        self.Hit_z = AT[2]
-
-    def FastTrace(self, pS, dC, WaveLength):
-        """Trace.
-
-        Parameters
-        ----------
-        pS :
-            pS
-        dC :
-            dC
-        WaveLength :
-            WaveLength
-        """
-        self.__CollectDataInit()
-        ResVec = np.asarray(dC)
-        RayOrig = np.asarray(pS)
-        self.RAY = []
-        self.Wave = WaveLength
-        self.RAY.append(RayOrig)
-        self.__WavePrecalc()
-        j = 0
-        Glass = self.GlobGlass[j]
-        PrevN = self.N_Prec[j]
-        j = 1
-        SIGN = np.ones_like(ResVec)
-
-        while True:
-            if (j == self.Targ_Surf):
-                break
-
-            j_gg = j
-            Glass = self.GlobGlass[j_gg]
-
-            if ((self.Glass[j] != 'NULL') and (self.Glass[j] != 'ABSORB')):
-                Proto_pTarget = (np.asarray(RayOrig) + ((ResVec * 999999999.9) * SIGN))
-
-                Output = self.INORM.InterNormalFast(RayOrig, Proto_pTarget, j)
-
-                (SurfHit, SurfNorm, pTarget, GooveVect, HitObjSpace, j) = Output
-
-                if (SurfHit != 0):
-
-                    ImpVec = ResVec
-                    CurrN = self.N_Prec[j_gg]
-                    S = ImpVec
-                    R = SurfNorm
-                    N = PrevN
-                    Np = CurrN
-                    D = GooveVect
-                    Ord = self.SDT[j].Diff_Ord
-                    GrSpa = self.SDT[j].Grating_D
-
-                    (ResVec, CurrN, sign) = self.SDT[j].PHYSICS.calculate(S, R, N, Np, D, Ord, GrSpa, self.Wave, 0)
-
-                    SIGN = (SIGN * sign)
-
-                    PrevN = CurrN
-                    RayOrig = pTarget
-                    self.RAY.append(RayOrig)
-
-                else:
-                    break
-
-            j = (j + 1)
-
-
-
-        self.ray_SurfHits = np.asarray(self.RAY)
-
-
-        self.ExectTime=[]
+        Empty0 = []
+        Empty1 = torch.tensor([float('nan')]).to(device)
+        Empty2 = torch.tensor([float('nan'),float('nan')]).to(device)
+        Empty3 = torch.tensor([float('nan'),float('nan'),float('nan')]).to(device)
+        RayTraceType = 0
+        ValToSav = [[], Empty1, pS, pS, Empty3, Empty3, dC, Empty3, Empty3, Empty1, WaveLength, Empty1, Empty3, Empty0, Empty0, Empty0, j, RayTraceType]
+        self.__CollectData(ValToSav)

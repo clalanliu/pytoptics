@@ -46,16 +46,20 @@ def fresnel_dielectric(NP, NC, LMN_Inc, LMN_nor_surf, LMN_result):
     LMN_result :
         LMN_result
     """
+    #AA=(LMN_Inc[0]*LMN_nor_surf[0])+(LMN_Inc[1]*LMN_nor_surf[1])+(LMN_Inc[2]*LMN_nor_surf[2])
     CosTheta0 = torch.abs(torch.dot(LMN_Inc, LMN_nor_surf))
+    #BB=(LMN_result[0]*LMN_nor_surf[0])+(LMN_result[1]*LMN_nor_surf[1])+(LMN_result[2]*LMN_nor_surf[2])
     CosTheta1 = torch.abs(torch.dot(LMN_result, LMN_nor_surf))
     n0 = NP
     n1 = NC
     rs = (((n0 * CosTheta0) - (n1 * CosTheta1)) / ((n0 * CosTheta0) + (n1 * CosTheta1)))
     rp = (((n1 * CosTheta0) - (n0 * CosTheta1)) / ((n1 * CosTheta0) + (n0 * CosTheta1)))
-    Rs = (rs * rs)
-    Rp = (rp * rp)
-    Tp = (1 - Rp)
-    Ts = (1 - Rs)
+
+    Rs = (rs ** 2.)
+    Rp = (rp ** 2.)
+    Tp = (1.0 - Rp)
+    Ts = (1.0 - Rs)
+
     return (Rp, Rs, Tp, Ts)
 
 def fresnel_metal(NP, n_metal, k_complex, LMN_Inc, LMN_nor_surf):
@@ -218,16 +222,16 @@ def ParaxCalc(N_Prec, SDT, SuTo, n, Gl):
         S_Matrix.append(TT)
         N_Matrix.append(((('T sup: ' + str(j)) + ' to ') + str((j + 1))))
         PrevN = CurrN
-    SistemMatrix = np.matrix([[1.0, 0.0], [0.0, 1.0]])
+    SystemMatrix = np.matrix([[1.0, 0.0], [0.0, 1.0]])
     for Mi in S_Matrix[::(- 1)]:
-        SistemMatrix = np.dot(SistemMatrix, Mi)
-    a = SistemMatrix[0][(0, 0)]
-    b = SistemMatrix[0][(0, 1)]
-    c = SistemMatrix[1][(0, 0)]
-    d = SistemMatrix[1][(0, 1)]
+        SystemMatrix = np.dot(SystemMatrix, Mi)
+    a = SystemMatrix[0][(0, 0)]
+    b = SystemMatrix[0][(0, 1)]
+    c = SystemMatrix[1][(0, 0)]
+    d = SystemMatrix[1][(0, 1)]
     EFFL = ((- 1) / b)
     PPA = ((1 - d) / b)
     PPP = ((a - 1) / b)
     CC = np.asarray(CC)
     DD = np.asarray(DD)
-    return (SistemMatrix, S_Matrix, N_Matrix, a, b, c, d, EFFL, PPA, PPP, CC, N_Prec, DD)
+    return (SystemMatrix, S_Matrix, N_Matrix, a, b, c, d, EFFL, PPA, PPP, CC, N_Prec, DD)

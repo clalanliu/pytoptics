@@ -38,6 +38,6 @@ class surface_tools():
             # self.Surface_Flattener
             TOTAL_SURF_SHAPE = self.SDT[j].sigma_z(x, y, self.ErrSurfCase)
         else:
-            TOTAL_SURF_SHAPE = 0.0*torch.tensor(x).to(device)
+            TOTAL_SURF_SHAPE = 0.0*x
         return TOTAL_SURF_SHAPE
 
