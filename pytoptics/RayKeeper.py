@@ -67,8 +67,8 @@ class raykeeper():
         self.ORDER.append(torch.asarray(self.SYSTEM.ORDER))
         self.GRATING.append(torch.asarray(self.SYSTEM.GRATING))
         self.DISTANCE.append(torch.asarray(self.SYSTEM.DISTANCE))
-        self.OP.append(np.asarray(self.SYSTEM.OP))
-        self.TOP_S.append(np.asarray(self.SYSTEM.TOP_S))
+        #self.OP.append(np.asarray(self.SYSTEM.OP))
+        #self.TOP_S.append(np.asarray(self.SYSTEM.TOP_S))
         self.TOP.append(torch.asarray(self.SYSTEM.TOP))
         self.ALPHA.append(torch.asarray(self.SYSTEM.ALPHA))
         self.BULK_TRANS.append(torch.asarray(self.SYSTEM.BULK_TRANS))
@@ -104,7 +104,7 @@ class raykeeper():
         self.ORDER = []
         self.GRATING = []
         self.DISTANCE = []
-        self.OP = []
+        #self.OP = []
         self.TOP_S = []
         self.TOP = []
         self.ALPHA = []

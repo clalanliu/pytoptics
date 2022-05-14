@@ -351,8 +351,8 @@ class System():
         self.ORDER = []
         self.GRATING = []
         self.DISTANCE = []
-        self.OP = []
-        self.TOP_S = []
+        #self.OP = []
+        #self.TOP_S = []
         self.TOP = 0
         self.ALPHA = [0.0]
         self.BULK_TRANS = []
@@ -426,10 +426,10 @@ class System():
         p = RayOrig - pTarget
         dist = torch.linalg.norm(p)
         self.DISTANCE.append(dist)
-        self.OP.append((dist * PrevN) if PrevN != [] else [])
+        #self.OP.append((dist * PrevN) if PrevN != [] else [])
 
         self.TOP = (self.TOP + (dist * PrevN)) if PrevN != [] else []
-        self.TOP_S.append(self.TOP)
+        #self.TOP_S.append(self.TOP)
         self.ALPHA.append(alpha)
         self.S_LMN.append(SurfNorm)
         self.LMN.append(ImpVec)

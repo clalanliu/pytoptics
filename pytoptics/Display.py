@@ -215,7 +215,7 @@ def display3d(SYSTEM, RAYS, view=0, inline=False):
     # [wx,wy]=p.window_size
     p.add_text('KrakenOS',position="upper_left" ,font_size=28,color="royalblue")
     p.show_grid(font_size=6)
-    p.show(auto_close=False, interactive=True, interactive_update=True)
+    p.show(auto_close=False, interactive=True, interactive_update=True, block = False)
 
     [cpx,cpy,cpz]=p.camera_position
     # print(cpx,cpy,cpz)
@@ -343,7 +343,7 @@ def display2d(SYSTEM, RAYS, view=0, arrow=0):
         plt.ylabel('X')
     plt.axis('equal')
     # plt.savefig('plot.pdf')
-    plt.show()
+    plt.show(block = False)
 
 def edge_3d(MeshObject, cx, cy, xz):
     """edge_3d.

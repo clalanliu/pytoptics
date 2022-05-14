@@ -168,20 +168,20 @@ class Prerequisites():
             y2.append((rad2 * torch.sin(torch.deg2rad(torch.tensor(i).to(device)))))
         x2.append((rad2 * 1))
         y2.append((rad2 * 0))
-        x2 = torch.asarray(x2)
-        y2 = torch.asarray(y2)
+        x2 = torch.asarray(x2).to(device)
+        y2 = torch.asarray(y2).to(device)
         z2 = torch.zeros_like(x2).to(device)
 
         x2 = x2 + self.SDT[j].SubAperture[2]
         y2 = y2 + self.SDT[j].SubAperture[1]
 
-        points2 = np.c_[(x2, y2, z2)]
+        points2 = torch.stack((x2,y2,z2), axis=1).detach().cpu().numpy()
         L_te = pv.PolyData(points2)
         L_te.rotate_z(( self.SDT[j].TiltZ))
-        x2 = torch.asarray(L_te.points[:, 0])
-        y2 = torch.asarray(L_te.points[:, 1])
+        x2 = torch.asarray(L_te.points[:, 0]).to(device)
+        y2 = torch.asarray(L_te.points[:, 1]).to(device)
         z2 = self.SuTo.SurfaceShape(x2, y2, j)
-        points2 = np.c_[(x2.detach().cpu().numpy(), y2.detach().cpu().numpy(), z2.detach().cpu().numpy())]
+        points2 = torch.stack((x2,y2,z2), axis=1).detach().cpu().numpy()
         L_te = pv.PolyData(points2)
         L_te = self.GeometricRotatAndTran(L_te, j)
         return L_te.points
@@ -316,8 +316,8 @@ class Prerequisites():
         pass
 
 def construct_DTH(T):
-    tensor_0 = torch.zeros(1)
-    tensor_1 = torch.ones(1)
+    tensor_0 = torch.zeros(1).to(device)
+    tensor_1 = torch.ones(1).to(device)
     matrix = torch.stack(
         [
             torch.stack([tensor_1, tensor_0, tensor_0, tensor_0]),
@@ -330,8 +330,8 @@ def construct_DTH(T):
     return matrix
 
 def construct_RX(Tx):
-    tensor_0 = torch.zeros(1)
-    tensor_1 = torch.ones(1)
+    tensor_0 = torch.zeros(1).to(device)
+    tensor_1 = torch.ones(1).to(device)
     matrix = torch.stack(
         [
             torch.stack([tensor_1, tensor_0, tensor_0, tensor_0]),
@@ -344,8 +344,8 @@ def construct_RX(Tx):
     return matrix
 
 def construct_RY(Ty):
-    tensor_0 = torch.zeros(1)
-    tensor_1 = torch.ones(1)
+    tensor_0 = torch.zeros(1).to(device)
+    tensor_1 = torch.ones(1).to(device)
     matrix = torch.stack(
         [
             torch.stack([torch.cos((- Ty)), tensor_0,-torch.sin((- Ty)), tensor_0]),
@@ -358,8 +358,8 @@ def construct_RY(Ty):
     return matrix
 
 def construct_RZ(Tz):
-    tensor_0 = torch.zeros(1)
-    tensor_1 = torch.ones(1)
+    tensor_0 = torch.zeros(1).to(device)
+    tensor_1 = torch.ones(1).to(device)
     matrix = torch.stack(
         [
             torch.stack([torch.cos((- Tz)),-torch.sin((- Tz)), tensor_0, tensor_0]),
@@ -372,8 +372,8 @@ def construct_RZ(Tz):
     return matrix
 
 def construct_DXYZ(dx, dy, dz):
-    tensor_0 = torch.zeros(1)
-    tensor_1 = torch.ones(1)
+    tensor_0 = torch.zeros(1).to(device)
+    tensor_1 = torch.ones(1).to(device)
     matrix = torch.stack(
         [
             torch.stack([tensor_1, tensor_0, tensor_0, (- dx)]),

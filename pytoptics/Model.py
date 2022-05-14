@@ -6,9 +6,11 @@ from .Physics import *
 from .HitOnSurf import *
 from .InterNormalCalc import *
 from .MathUtil import *
+from .Display import *
 
 from enum import Enum
 import KrakenOS as Kos
+import matplotlib.pyplot as plt
 import torch
 from .Global import *
 torch.set_default_tensor_type(torchPrecision)
@@ -80,17 +82,17 @@ class OpticalSystem(torch.nn.Module):
         MXC: maximal number of cycles
         IMP: fractional improvement. If the improvements less than this amount five times continuously, optimization will be stopped
         """
-        optimizer = torch.optim.SGD(self.parameters(), lr=lr)
-        loss_history = [np.finfo(0.0).max]
+        optimizer = torch.optim.Adagrad(self.parameters(), lr=lr)
+        self.loss_history = [np.finfo(0.0).max]
         # Minimum cycles
         for epoch in range(MNC):
             self.print_variables()
             optimizer.zero_grad()
             X, Y, Z, L, M, N = self.Trace()
             loss = torch.std(X, unbiased=False) + torch.std(Y, unbiased=False)
-            loss_history.append(loss.detach().cpu().numpy())
+            self.loss_history.append(loss.detach().cpu().numpy())
             loss.backward(retain_graph=True)
-            print("Epoch {}: Loss = {}".format(epoch+1, loss_history[-1]))
+            print("Epoch {}: Loss = {}".format(epoch+1, self.loss_history[-1]))
             optimizer.step()
 
             if epoch < MNC - 1:
@@ -103,13 +105,13 @@ class OpticalSystem(torch.nn.Module):
             optimizer.zero_grad()
             X, Y, Z, L, M, N = self.Trace()
             loss = torch.std(X, unbiased=False) + torch.std(Y, unbiased=False)
-            loss_history.append(loss.detach().cpu().numpy())
+            self.loss_history.append(loss.detach().cpu().numpy())
             # loss_criteria check
-            if loss_history[-1] < loss_criteria:
+            if self.loss_history[-1] < loss_criteria:
                 break
 
             # IMP Check
-            if np.abs((loss_history[-1] - loss_history[-2])/loss_history[-2]) < IMP:
+            if np.abs((self.loss_history[-1] - self.loss_history[-2])/self.loss_history[-2]) < IMP:
                 counter += 1
             else:
                 counter = 0
@@ -117,13 +119,37 @@ class OpticalSystem(torch.nn.Module):
                 break
 
             loss.backward(retain_graph=True)
-            print("Epoch {}: Loss = {}".format(epoch+1, loss_history[-1]))
+            print("Epoch {}: Loss = {}".format(epoch+1, self.loss_history[-1]))
             optimizer.step()
 
             if epoch < MXC - 1:
                 self.update_surfaces()
 
-        return X, Y, loss_history[1:]
+        self.image_X = X.detach().cpu().numpy()
+        self.image_Y = Y.detach().cpu().numpy()
+        self.loss_history = np.array(self.loss_history[1:])
+        return self.loss_history
+
+    def ShowSpotDiagram(self):
+        plt.figure()
+        plt.plot(self.image_X, self.image_Y, 'x')
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.title('Spot Diagram')
+        plt.axis('square')
+        plt.show(block = False)
+
+    def ShowModel2D(self):
+        display2d(self, self.rayskeepers[0][0], 0)
+
+    def ShowModel3D(self):
+        display3d(self, self.rayskeepers[0][0], 0)
+
+    def ShowOptimizeLoss(self):
+        plt.figure()
+        plt.plot(self.loss_history)
+        plt.title("Loss Optimization")
+        plt.show(block = False)
 
     # ______________________________________#
     def print_variables(self):
@@ -264,8 +290,8 @@ class OpticalSystem(torch.nn.Module):
         self.ORDER = []
         self.GRATING = []
         self.DISTANCE = []
-        self.OP = []
-        self.TOP_S = []
+        #self.OP = []
+        #self.TOP_S = []
         self.TOP = 0
         self.ALPHA = [0.0]
         self.BULK_TRANS = []
@@ -305,10 +331,10 @@ class OpticalSystem(torch.nn.Module):
         p = RayOrig - pTarget
         dist = torch.linalg.norm(p)
         self.DISTANCE.append(dist)
-        self.OP.append((dist * PrevN) if PrevN != [] else [])
+        #self.OP.append((dist * PrevN) if PrevN != [] else [])
 
         self.TOP = (self.TOP + (dist * PrevN)) if PrevN != [] else []
-        self.TOP_S.append(self.TOP)
+        #self.TOP_S.append(self.TOP)
         self.ALPHA.append(alpha)
         self.S_LMN.append(SurfNorm)
         self.LMN.append(ImpVec)
