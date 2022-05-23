@@ -1,18 +1,20 @@
 
 # PyTorch Implementation of Optics Simulator and Optimizer (Pytoptics)         
-![GitHub Logo]()
+![GitHub Logo](https://github.com/clalanliu/pytoptics/blob/main/imgs/icon.png)
 
-Pytoptics (PyTorch Implementation of Optics Simulator and Optimizer) is a python library extended from [KrakenOS](https://github.com/Garchupiter/Kraken-Optical-Simulator/tree/KrakenOS) and based in Pytorch, Numpy, Matplotlib, PyVTK and PyVista libraries. In addition to the original utilities in KrakenOS including performing sequential exact ray tracing, generating off-axis systems and calculation of wavefront aberrations in terms of Zernike polynomials, Pytoptics enables users to optimize their optical systems with Pytorch optimizer
+Pytoptics (PyTorch Implementation of Optics Simulator and Optimizer) is a python library extended from [KrakenOS](https://github.com/Garchupiter/Kraken-Optical-Simulator/tree/KrakenOS) and based in Pytorch, Numpy, Matplotlib, PyVTK and PyVista libraries. In addition to the original utilities in KrakenOS including performing sequential exact ray tracing, generating off-axis systems and calculation of wavefront aberrations in terms of Zernike polynomials, Pytoptics enables users to optimize their optical systems with Pytorch optimizer:
 
+|Initial System| Optimize RMS of Spot Diagram|Optimized System|
+|  ----  | ----  | ----  |
+|![](https://github.com/clalanliu/pytoptics/blob/main/imgs/1.png)|![](https://github.com/clalanliu/pytoptics/blob/main/imgs/3.png)|![](https://github.com/clalanliu/pytoptics/blob/main/imgs/2.png)|
+
+The project is still in implementation, more features are being tested and added.
 
 ## Install Pytoptics
 ```python
 pip install git+https://github.com/clalanliu/pytoptics.git
 ```
-
-## Prerequisites
-To install prerequisites
-
+You may install Prerequisites first:
 ```python
 pip install pyvista
 pip install PyVTK
@@ -24,6 +26,12 @@ pip install csv342
 pip install KrakenOS
 pip install torch torchvision torchaudio
 ```
+## Optimizable Variable Types:
+The following paramters are tested and optimizable for the current version:
+|Type|Meaning|
+|----| ---- |
+|opticalsystem.surfaces[].Rc| Radius of surface|
+|opticalsystem.surfaces[].Thickness| Thickness of surface|
 
 ## Usage
 To construct a optical system and assign surface information with trainable pytorch parameters:
