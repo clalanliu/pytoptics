@@ -192,7 +192,7 @@ class OpticalSystem(torch.nn.Module):
 
     def ShowOptimizeLoss(self):
         ymin = np.min(self.loss_history)
-        ymax = np.quantile(self.loss_history, 0.9)
+        ymax = np.quantile(self.loss_history, 0.95)
         ymin = ymin - (ymax-ymin)*0.05
         ymax = ymax + (ymax-ymin)*0.05
         plt.figure()
