@@ -7,7 +7,7 @@ Pytoptics (PyTorch Implementation of Optics Simulator and Optimizer) is a python
 
 ## Install Pytoptics
 ```python
-pip install Pytoptics
+pip install git+https://github.com/clalanliu/pytoptics.git
 ```
 
 ## Prerequisites
