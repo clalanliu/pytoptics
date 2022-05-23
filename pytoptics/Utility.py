@@ -21,17 +21,20 @@ def getBack(var_grad_fn, f, counter=0):
     
 
 
-def debugTracker(tensor, name="log"):
+def debugTracker(tensor, name="log", generate_log=False):
 
     if not os.path.exists('log'):
         os.makedirs('log')    
     try:
-        torchviz.make_dot(tensor).render('log/'+name, format="jpg")
+        
         loss = torch.std(tensor, unbiased=False)
         loss.backward(retain_graph=True)
-        f = open('log/'+name+'.txt', 'w')
-        getBack(loss.grad_fn, f)
-        sys.stdout = original_stdout 
+        if generate_log:
+            torchviz.make_dot(tensor).render('log/'+name, format="jpg")
+            f = open('log/'+name+'.txt', 'w')
+            getBack(loss.grad_fn, f)
+            sys.stdout = original_stdout 
+            
     except Exception as e: 
         sys.stdout = original_stdout 
         print(e)

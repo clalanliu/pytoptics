@@ -74,7 +74,7 @@ class aspheric__surf():
         E :
             E
         """
-        self.E = torch.nn.Parameter(torch.tensor(float(E)).to(device))
+        self.E = E
 
 
     def calculate(self, x, y):
@@ -110,9 +110,9 @@ class conic__surf(object):
         C_RXY_RATIO :
             C_RXY_RATIO
         """
-        self.R_C = torch.nn.Parameter(torch.tensor(float(R_C)).to(device))
-        self.KON = torch.nn.Parameter(torch.tensor(float(KON)).to(device))
-        self.C_RXY_RATIO = torch.nn.Parameter(torch.tensor(float(C_RXY_RATIO)).to(device))
+        self.R_C = R_C
+        self.KON = KON
+        self.C_RXY_RATIO = C_RXY_RATIO
 
 
 
@@ -169,8 +169,8 @@ class axicon__surf():
         AXC :
             AXC
         """
-        self.C_RXY_RATIO = torch.nn.Parameter(torch.tensor(float(C_RXY_RATIO)).to(device))
-        self.AXC = torch.nn.Parameter(torch.tensor(float(AXC)).to(device))
+        self.C_RXY_RATIO = C_RXY_RATIO
+        self.AXC = AXC
 
     def calculate(self, x, y):
         """calculate.
@@ -310,10 +310,10 @@ class zernike__surf():
         DMTR :
             DMTR
         """
-        self.COEF = torch.nn.Parameter(torch.tensor(float(COEF)).to(device))
-        self.Z_POL = torch.nn.Parameter(torch.tensor(float(Z_POL)).to(device))
-        self.Z_POW = torch.nn.Parameter(torch.tensor(float(Z_POW)).to(device))
-        self.DMTR = torch.nn.Parameter(torch.tensor(float(DMTR)).to(device))
+        self.COEF = COEF
+        self.Z_POL = Z_POL
+        self.Z_POW = Z_POW
+        self.DMTR = DMTR
 
     def calculate(self, x, y):
         """calculate.

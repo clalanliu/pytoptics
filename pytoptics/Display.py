@@ -3,7 +3,7 @@ import numpy as np
 import pyvista as pv
 import matplotlib.pyplot as plt
 import sys
-
+import copy
 
 
 def add_arrow(line, position=None, direction='right', size=15, color=None):
@@ -221,7 +221,7 @@ def display3d(SYSTEM, RAYS, view=0, inline=False):
     # print(cpx,cpy,cpz)
 
 
-def display2d(SYSTEM, RAYS, view=0, arrow=0):
+def display2d(SYSTEM, rayskeepers, view=0, arrow=0, color_according_to_wave=False):
     """display2d.
 
     Parameters
@@ -233,11 +233,19 @@ def display2d(SYSTEM, RAYS, view=0, arrow=0):
     view :
         view
     """
+    RayWave = []
+    ALLRAYS_CC = []
+    FIELD = []
+    for i in range(len(rayskeepers)):
+        for j in range(len(rayskeepers[0])):
+            ALLRAYS_CC.extend(rayskeepers[i][j].CC)
+            RayWave.extend(rayskeepers[i][j].RayWave)
+            FIELD.extend([i for _ in range(len(rayskeepers[i][j].CC))])
+
     CCC = pv.MultiBlock()
-    for rays in RAYS.CC:
+    for rays in ALLRAYS_CC:
         RAY_VTK_OBJ = pv.lines_from_points(rays.detach().cpu().numpy())
         CCC.append(RAY_VTK_OBJ)
-
 
 
 
@@ -317,10 +325,14 @@ def display2d(SYSTEM, RAYS, view=0, arrow=0):
 
 
 
-    if (len(RAYS.RayWave) != 0):
-        RW = np.asarray(RAYS.RayWave)
-        for i in range(0, np.shape(RW)[0]):
-            RGB = wavelength_to_rgb((RW[i] * 1000.0))
+    if (len(RayWave) != 0):
+        RW = np.asarray(RayWave)
+        for i in range(len(CCC)):
+            if color_according_to_wave:
+                RGB = wavelength_to_rgb((RW[i] * 1000.0))
+            else:
+                WV = np.linspace(0.4, 0.7, num=len(rayskeepers))[FIELD[i]]
+                RGB = wavelength_to_rgb((WV * 1000.0))
             RRR = CCC[i]
             Ax = RRR.points[:, 0]
             Ay = RRR.points[:, 1]

@@ -183,7 +183,7 @@ class raykeeper():
         L_ = torch.stack(L)
         M_ = torch.stack(M)
         N_ = torch.stack(N)
-
+        
         return (X_, Y_, Z_, L_,M_, N_)
 
 

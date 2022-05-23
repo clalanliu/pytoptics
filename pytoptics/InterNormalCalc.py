@@ -61,8 +61,8 @@ class InterNormalCalc():
             j
         """
         
-        StopPoint = torch.tensor([PP_stop[0], PP_stop[1], PP_stop[2], 1.0]).to(device)
-        StarPoint = torch.tensor([PP_start[0], PP_start[1], PP_start[2], 1.0]).to(device)
+        StopPoint = torch.hstack([PP_stop[:3], torch.ones(1).to(device)])
+        StarPoint = torch.hstack([PP_start[:3], torch.ones(1).to(device)])
 
         SurfHit = 1
         P_SurfHit = torch.mv(self.Pr3D.TRANS_1A[j], StopPoint)
@@ -152,8 +152,10 @@ class InterNormalCalc():
 
     def __SigmaHitTransfSpaceFast(self, PP_start, PP_stop, j):
 
-        StopPoint = torch.tensor([PP_stop[0], PP_stop[1], PP_stop[2], 1.0]).to(device)
-        StarPoint = torch.tensor([PP_start[0], PP_start[1], PP_start[2], 1.0]).to(device)
+        #StopPoint = torch.tensor([PP_stop[0], PP_stop[1], PP_stop[2], 1.0]).to(device)
+        #StarPoint = torch.tensor([PP_start[0], PP_start[1], PP_start[2], 1.0]).to(device)
+        StopPoint = torch.hstack([PP_stop[:3], torch.ones(1).to(device)])
+        StarPoint = torch.hstack([PP_start[:3], torch.ones(1).to(device)])
 
         SurfHit = 1
         P_SurfHit = self.Pr3D.TRANS_1A[j].dot(StopPoint)
@@ -214,8 +216,8 @@ class InterNormalCalc():
         j :
             j
         """
-        P1 = torch.tensor([Px1, Py1, Pz1, 1.0]).to(device)
-        P2 = torch.tensor([Px2, Py2, Pz2, 1.0]).to(device)
+        P1 = torch.hstack([Px1, Py1, Pz1, torch.ones(1).to(device)])
+        P2 = torch.hstack([Px2, Py2, Pz2, torch.ones(1).to(device)])
         NP1 = torch.mv(self.TRANS_2A[j], P1).reshape((1,4))
         NP2 = torch.mv(self.TRANS_2A[j], P2).reshape((1,4))
         Pn = torch.tensor([(- (NP1[(0, 0)] - NP2[(0, 0)])), (- (NP1[(0, 1)] - NP2[(0, 1)])), (- (NP1[(0, 2)] - NP2[(0, 2)]))]).to(device)
