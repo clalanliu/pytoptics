@@ -50,8 +50,8 @@ class OpticalSystem(torch.nn.Module):
 
 
     def Initialize(self):
-        config_ = Kos.Setup()
-        self.__init_system(self.surfaces, config_)
+        self.config_ = Kos.Setup()
+        self.__init_system(self.surfaces, self.config_)
         
 
     def SetAperture(self, aperture_type: ApertureType, aperture_value: float):
@@ -256,7 +256,7 @@ class OpticalSystem(torch.nn.Module):
 ######################## Tracing Utility ###########################
 ####################################################################
 
-    def update_surfaces(self):
+    def update_surfaces(self, clear_raykeeper=True):
         self.SDT = self.surfaces
         self.update = False
         self.S_Matrix = []
@@ -295,7 +295,8 @@ class OpticalSystem(torch.nn.Module):
         (self.c_p, self.n_p, self.d_p) = (0, 0, 0)
         self.tt=1.
         
-        self.rayskeepers = [[raykeeper(self) for _ in range(len(self.wavelengths))] for _ in range(len(self.fields))] 
+        if clear_raykeeper:
+            self.rayskeepers = [[raykeeper(self) for _ in range(len(self.wavelengths))] for _ in range(len(self.fields))] 
 
 
     def Trace(self):
@@ -323,7 +324,6 @@ class OpticalSystem(torch.nn.Module):
                         if r <= self.aperture_value/2:
                             pSource_0 = [x, y, 0.0]
                             dCos = xy_to_direction_cosine(self.fields[f_i][0], self.fields[f_i][1])
-                            
                             for w_i in range(len(self.wavelengths)):
                                 self.RayTrace(pSource_0, dCos, self.wavelengths[w_i])
                                 self.rayskeepers[f_i][w_i].push()
@@ -338,6 +338,8 @@ class OpticalSystem(torch.nn.Module):
                         self.output_L[-1].append(L)
                         self.output_M[-1].append(M)
                         self.output_N[-1].append(N)
+
+        self.update_surfaces(clear_raykeeper=False)
     
     def __CollectDataInit(self):
         """__CollectDataInit.
@@ -482,7 +484,12 @@ class OpticalSystem(torch.nn.Module):
 
                 Output = self.INORM.InterNormal(RayOrig, Proto_pTarget, j, j)
 
-                (SurfHit, SurfNorm, pTarget, GooveVect, HitObjSpace, LMNObjSpace, j) = Output
+                (SurfHit, SurfNorm, pTarget, GooveVect, HitObjSpace, LMNObjSpace, j, resize_surface_diameter) = Output
+
+                ## dynamically adjust radius of lens
+                if resize_surface_diameter:
+                    pTarget_radius =  torch.sqrt(pTarget[0]*pTarget[0] + pTarget[1]*pTarget[1])
+                    self.surfaces[j].Diameter = pTarget_radius*2*1.01
                 
                 if (SurfHit == 0):
                     break

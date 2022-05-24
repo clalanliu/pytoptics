@@ -3,7 +3,6 @@ def convert_list_of_string_to_float(str_list):
 
 
 def CodeVSurfaceParser(surface_str):
-    'S     57.44976545070001 8.746657850149999 SK16_SCHOTT\n'
     substrs = surface_str.split()
     R = None
     Thickness = None

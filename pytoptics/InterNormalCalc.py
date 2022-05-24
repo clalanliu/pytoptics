@@ -60,7 +60,8 @@ class InterNormalCalc():
         j :
             j
         """
-        
+        resize_surface_diameter = False
+
         StopPoint = torch.hstack([PP_stop[:3], torch.ones(1).to(device)])
         StarPoint = torch.hstack([PP_start[:3], torch.ones(1).to(device)])
 
@@ -111,11 +112,15 @@ class InterNormalCalc():
             DiamInf = ((self.SDT[j].InDiameter * self.SDT[j].SubAperture[0]) * self.Disable_Inner)
             DiamSup = ((self.SDT[j].Diameter * self.SDT[j].SubAperture[0]) + (10000.0 * self.ExtraDiameter))
             if ((D0 > DiamSup) or (D0 < DiamInf)):
+                self.SDT[j].Diameter *= D0/DiamSup+0.01
+                resize_surface_diameter = True
+                '''
                 SurfHit = 0
                 P_x2 = torch.tensor(0).to(device)
                 P_y2 = torch.tensor(0).to(device)
                 P_z2 = torch.tensor(0).to(device)
-            else:
+                '''
+            if True:
                 (P_x2, P_y2, P_z2) = self.HS.SolveHit(Px1, Py1, Pz1, L, M, N, j)
                 if (not math.isnan(P_z2)):
                     P_x2 = self.HS.vevaX
@@ -138,17 +143,21 @@ class InterNormalCalc():
             D0 = (2.0 * ASD)
 
             if ((D0 > self.SDT[j].Diameter * self.SDT[j].SubAperture[0]) or (D0 < self.SDT[j].InDiameter * self.SDT[j].SubAperture[0] )):
+                self.SDT[j].Diameter *= D0/self.SDT[j].Diameter+0.01
+                resize_surface_diameter = True
+                '''
                 SurfHit = 0
                 P_x2 = torch.tensor(0).to(device)
                 P_y2 = torch.tensor(0).to(device)
                 P_z2 = torch.tensor(0).to(device)
+                '''
 
             else:
                 P_x2 = ((L / N) * self.SDT[j].Thin_Lens)
                 P_y2 = ((M / N) * self.SDT[j].Thin_Lens)
                 P_z2 = self.SDT[j].Thin_Lens
     
-        return (SurfHit, P_x2, P_y2, P_z2, Px1, Py1, Pz1, L, M, N)
+        return (SurfHit, P_x2, P_y2, P_z2, Px1, Py1, Pz1, L, M, N, resize_surface_diameter)
 
     def __SigmaHitTransfSpaceFast(self, PP_start, PP_stop, j):
 
@@ -384,7 +393,7 @@ class InterNormalCalc():
 
             if (SurfHit != 0):
 
-                (SurfHit, Px2, Py2, Pz2, Px1, Py1, Pz1, L, M, N) = self.__SigmaHitTransfSpace(PP_start, PP_stop, j)
+                (SurfHit, Px2, Py2, Pz2, Px1, Py1, Pz1, L, M, N, resize_surface_diameter) = self.__SigmaHitTransfSpace(PP_start, PP_stop, j)
                 LMN_exit_Object_Space = torch.stack([L, M, N])
 
                 if (self.SDT[j].Thin_Lens == 0):
@@ -397,7 +406,7 @@ class InterNormalCalc():
             (SurfHit, norm, PTO_exit, Pgn) = self.__InterNormalSolidObject(jj, PP_start, PP_stop)
         
         return (SurfHit, norm, PTO_exit, torch.tensor(Pgn).to(device), PTO_exit_Object_Space, 
-            LMN_exit_Object_Space, j)
+            LMN_exit_Object_Space, j, resize_surface_diameter)
 
 
 

@@ -34,6 +34,7 @@ constraints = [
 
 opticalsystem.AddConstraint(constraints)
 # ______________________________________#
+#opticalsystem.SetAperture(pytoptics.ApertureType.ENTRANCE_PUPIL_DIAMETER, 10)
 opticalsystem.Initialize()
 opticalsystem.Trace()
 opticalsystem.ShowModel2D()
