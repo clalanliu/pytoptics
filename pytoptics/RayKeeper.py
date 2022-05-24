@@ -162,7 +162,6 @@ class raykeeper():
                 ray0 = self.xyz[d]
 
                 [x1, y1, z1] = ray0[N_ELEMENT]
-                ray0.retain_grad()
                 
                 X.append(x1)
                 Y.append(y1)
@@ -177,13 +176,17 @@ class raykeeper():
                 M.append(m1)
                 N.append(n1)
 
-        X_ = torch.stack(X)
-        Y_ = torch.stack(Y)
-        Z_ = torch.stack(Z)
-        L_ = torch.stack(L)
-        M_ = torch.stack(M)
-        N_ = torch.stack(N)
-        
-        return (X_, Y_, Z_, L_,M_, N_)
+        try:
+            X_ = torch.stack(X)
+            Y_ = torch.stack(Y)
+            Z_ = torch.stack(Z)
+            L_ = torch.stack(L)
+            M_ = torch.stack(M)
+            N_ = torch.stack(N)
+            
+            return (X_, Y_, Z_, L_,M_, N_)
+
+        except:
+            return None
 
 

@@ -8,6 +8,7 @@ from .InterNormalCalc import *
 from .MathUtil import *
 from .Display import *
 from .ConstraintManager import ConstraintManager
+from .FileParser import convert_list_of_string_to_float, CodeVSurfaceParser
 
 from enum import Enum
 import KrakenOS as Kos
@@ -37,17 +38,21 @@ class ApertureType(Enum):
 
 
 class OpticalSystem(torch.nn.Module):
-    def __init__(self, surface_num):
+    def __init__(self, surface_num=None, codev_seq=None):
         super().__init__()
         self.surfaces = torch.nn.ModuleList()
         self.constraintManager = None
-        for i in range(surface_num):
-            self.surfaces.append(surf())
+        if isinstance(codev_seq, str):
+            self.construct_from_codev_seq(codev_seq)
+        elif isinstance(surface_num, int):      
+            for i in range(surface_num):
+                self.surfaces.append(surf())
 
 
     def Initialize(self):
         config_ = Kos.Setup()
         self.__init_system(self.surfaces, config_)
+        
 
     def SetAperture(self, aperture_type: ApertureType, aperture_value: float):
         """Setting Aperture of the system
@@ -75,6 +80,98 @@ class OpticalSystem(torch.nn.Module):
         wavelengths: list of used wavelength
         """
         self.wavelengths = wavelengths
+
+    
+        
+    def __init_system(self, SurfData, KN_Setup):
+        """__init__.
+
+        Parameters
+        ----------
+        SurfData :
+            SurfData
+        KN_Setup :
+            KN_Setup
+        """
+        self.ExectTime=[]
+        self.SDT = SurfData
+        self.SETUP = KN_Setup
+        self.update_surfaces()
+
+    def __SurFuncSuscrip(self):
+        """__SurFuncSuscrip.
+        """
+        for i in range(0, self.n):
+            self.SDT[i].build_surface_function()
+
+    def __PrerequisitesGlass(self):
+        """__PrerequisitesGlass.
+        """
+        self.Glass = []
+        self.GlobGlass = []
+        for i in range(0, self.n):
+            if (type(self.SDT[i].Glass) == type(1.0)):
+                self.SDT[i].Glass = ('AIR_' + str(self.SDT[i].Glass))
+                # print(self.SDT[i].Glass)
+            self.Glass.append(self.SDT[i].Glass.replace(' ', ''))
+            self.GlobGlass.append(self.SDT[i].Glass.replace(' ', ''))
+            if ((self.GlobGlass[i] == 'NULL') or (self.GlobGlass[i] == 'ABSORB')):
+                self.GlobGlass[i] = self.GlobGlass[(i - 1)]
+
+    def __WavePrecalc(self):
+        """__WavePrecalc.: Calculate wave-dependent parameteres like refraction index 
+        """
+        if (self.Wave != self.PreWave):
+            self.N_Prec = []
+            self.AlphaPrecal = []
+            self.PreWave = self.Wave
+            for i in range(0, self.n):
+                (NP, AP) = n_wave_dispersion(self.SETUP, self.GlobGlass[i], self.Wave)
+                self.N_Prec.append(NP)
+                self.AlphaPrecal.append(AP)
+
+    def construct_from_codev_seq(self, codev_seq):
+        lines = []
+        with open(codev_seq) as f:
+            lines = f.readlines()
+
+        EPD = float(lines[2].split()[1])
+        self.SetAperture(ApertureType.ENTRANCE_PUPIL_DIAMETER, EPD)
+
+        WL = [float(i)/1000.0 for i in lines[4].split()[1:]]
+        self.SetWavelength(WL)
+
+        XAN = convert_list_of_string_to_float(lines[8].split()[1:])
+        YAN = convert_list_of_string_to_float(lines[9].split()[1:])
+        WTF = convert_list_of_string_to_float(lines[10].split()[1:])
+        for i in range(1, len(WL)):
+            self.SetFields(FieldType.ANGLE, [list(a) for a in zip(XAN, YAN, WTF)])
+
+        # Find SO surface position
+        SO_line_index = 10
+        for i in range(13, len(lines)):
+            if 'SO' in lines[i]:
+                SO_line_index = i
+                break
+        # Add SO
+        
+        for i in range(SO_line_index+1, len(lines)):
+            if 'STO' in lines[i][:6]:
+                continue
+            elif 'S' in lines[i][:3]:
+                Rc, Thickness, Glass = CodeVSurfaceParser(lines[i])
+                self.surfaces.append(surf())
+                self.surfaces[-1].Rc = torch.tensor(Rc).to(device)
+                self.surfaces[-1].Thickness = torch.tensor(Thickness).to(device) 
+                self.surfaces[-1].Glass = Glass
+                self.surfaces[-1].Diameter = torch.tensor(EPD).to(device)
+
+
+        self.surfaces[-1].Diameter = torch.tensor(EPD*2).to(device)
+
+####################################################################
+####################### Optimize Utility ###########################
+####################################################################
 
     def AddConstraint(self, constraints:list):
         self.constraintManager = ConstraintManager(constraints)
@@ -154,60 +251,10 @@ class OpticalSystem(torch.nn.Module):
         
         return loss
 
-    def ShowSpotDiagram(self):
-        self.spot_image_X = []
-        self.spot_image_Y = []
-        for i in range(len(self.output_X)):
-            for j in range(len(self.output_X[0])):
-                self.spot_image_X.append(self.output_X[i][j].detach().cpu().numpy())
-                self.spot_image_Y.append(self.output_Y[i][j].detach().cpu().numpy())
-        
-        self.spot_image_X = np.hstack(self.spot_image_X)
-        self.spot_image_Y = np.hstack(self.spot_image_Y)
 
-        min_x = np.min(self.spot_image_X)
-        max_x = np.max(self.spot_image_X)
-        min_y = np.min(self.spot_image_Y)
-        max_y = np.max(self.spot_image_Y)
-
-        xlim = np.max([np.abs(min_x), np.abs(max_x)])
-        ylim = np.max([np.abs(min_y), np.abs(max_y)])
-        lim = np.max([xlim, ylim])
-
-        plt.figure()
-        plt.xlim(-lim, lim)
-        plt.ylim(-lim, lim)
-        plt.plot(self.spot_image_X, self.spot_image_Y, 'x')
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.title('Spot Diagram')
-        #plt.axis('square')
-        plt.show(block = False)
-
-    def ShowModel2D(self):
-        display2d(self, self.rayskeepers, 0)
-
-    def ShowModel3D(self):
-        display3d(self, self.rayskeepers[0][0], 0)
-
-    def ShowOptimizeLoss(self):
-        ymin = np.min(self.loss_history)
-        ymax = np.quantile(self.loss_history, 0.95)
-        ymin = ymin - (ymax-ymin)*0.05
-        ymax = ymax + (ymax-ymin)*0.05
-        plt.figure()
-        plt.plot(self.loss_history)
-        plt.ylim([ymin, ymax])
-        plt.title("Loss Optimization")
-        plt.show(block = False)
-
-    # ______________________________________#
-    def PrintVariables(self):
-        print("===== Optimized Variables =====")
-        for name, param in self.named_parameters():
-            if param.requires_grad:
-                print(name, param.data, param.grad)
-        print("===============================")
+####################################################################
+######################## Tracing Utility ###########################
+####################################################################
 
     def update_surfaces(self):
         self.SDT = self.surfaces
@@ -282,62 +329,15 @@ class OpticalSystem(torch.nn.Module):
                                 self.rayskeepers[f_i][w_i].push()
 
                 for w_i in range(len(self.wavelengths)):            
-                    X, Y, Z, L, M, N = self.rayskeepers[f_i][w_i].pick(-1)
-                    self.output_X[-1].append(X)
-                    self.output_Y[-1].append(Y)
-                    self.output_Z[-1].append(Z)
-                    self.output_L[-1].append(L)
-                    self.output_M[-1].append(M)
-                    self.output_N[-1].append(N)
-            
-
-        
-    def __init_system(self, SurfData, KN_Setup):
-        """__init__.
-
-        Parameters
-        ----------
-        SurfData :
-            SurfData
-        KN_Setup :
-            KN_Setup
-        """
-        self.ExectTime=[]
-        self.SDT = SurfData
-        self.SETUP = KN_Setup
-        self.update_surfaces()
-
-    def __SurFuncSuscrip(self):
-        """__SurFuncSuscrip.
-        """
-        for i in range(0, self.n):
-            self.SDT[i].build_surface_function()
-
-    def __PrerequisitesGlass(self):
-        """__PrerequisitesGlass.
-        """
-        self.Glass = []
-        self.GlobGlass = []
-        for i in range(0, self.n):
-            if (type(self.SDT[i].Glass) == type(1.0)):
-                self.SDT[i].Glass = ('AIR_' + str(self.SDT[i].Glass))
-                # print(self.SDT[i].Glass)
-            self.Glass.append(self.SDT[i].Glass.replace(' ', ''))
-            self.GlobGlass.append(self.SDT[i].Glass.replace(' ', ''))
-            if ((self.GlobGlass[i] == 'NULL') or (self.GlobGlass[i] == 'ABSORB')):
-                self.GlobGlass[i] = self.GlobGlass[(i - 1)]
-
-    def __WavePrecalc(self):
-        """__WavePrecalc.: Calculate wave-dependent parameteres like refraction index 
-        """
-        if (self.Wave != self.PreWave):
-            self.N_Prec = []
-            self.AlphaPrecal = []
-            self.PreWave = self.Wave
-            for i in range(0, self.n):
-                (NP, AP) = n_wave_dispersion(self.SETUP, self.GlobGlass[i], self.Wave)
-                self.N_Prec.append(NP)
-                self.AlphaPrecal.append(AP)
+                    output = self.rayskeepers[f_i][w_i].pick(-1)
+                    if output:
+                        X, Y, Z, L, M, N = output
+                        self.output_X[-1].append(X)
+                        self.output_Y[-1].append(Y)
+                        self.output_Z[-1].append(Z)
+                        self.output_L[-1].append(L)
+                        self.output_M[-1].append(M)
+                        self.output_N[-1].append(N)
     
     def __CollectDataInit(self):
         """__CollectDataInit.
@@ -559,3 +559,64 @@ class OpticalSystem(torch.nn.Module):
         RayTraceType = 0
         ValToSav = [[], Empty1, pS, pS, Empty3, Empty3, dC, Empty3, Empty3, Empty1, WaveLength, Empty1, Empty3, Empty0, Empty0, Empty0, j, RayTraceType]
         self.__CollectData(ValToSav)
+
+
+
+
+####################################################################
+#######################   Display Utility ##########################
+####################################################################
+    def ShowSpotDiagram(self):
+        self.spot_image_X = []
+        self.spot_image_Y = []
+        for i in range(len(self.output_X)):
+            for j in range(len(self.output_X[0])):
+                self.spot_image_X.append(self.output_X[i][j].detach().cpu().numpy())
+                self.spot_image_Y.append(self.output_Y[i][j].detach().cpu().numpy())
+        
+        self.spot_image_X = np.hstack(self.spot_image_X)
+        self.spot_image_Y = np.hstack(self.spot_image_Y)
+
+        min_x = np.min(self.spot_image_X)
+        max_x = np.max(self.spot_image_X)
+        min_y = np.min(self.spot_image_Y)
+        max_y = np.max(self.spot_image_Y)
+
+        xlim = np.max([np.abs(min_x), np.abs(max_x)])
+        ylim = np.max([np.abs(min_y), np.abs(max_y)])
+        lim = np.max([xlim, ylim])
+
+        plt.figure()
+        plt.xlim(-lim, lim)
+        plt.ylim(-lim, lim)
+        plt.plot(self.spot_image_X, self.spot_image_Y, 'x')
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.title('Spot Diagram')
+        #plt.axis('square')
+        plt.show(block = False)
+
+    def ShowModel2D(self):
+        display2d(self, self.rayskeepers, 0)
+
+    def ShowModel3D(self):
+        display3d(self, self.rayskeepers[0][0], 0)
+
+    def ShowOptimizeLoss(self):
+        ymin = np.min(self.loss_history)
+        ymax = np.quantile(self.loss_history, 0.95)
+        ymin = ymin - (ymax-ymin)*0.05
+        ymax = ymax + (ymax-ymin)*0.05
+        plt.figure()
+        plt.plot(self.loss_history)
+        plt.ylim([ymin, ymax])
+        plt.title("Loss Optimization")
+        plt.show(block = False)
+
+    # ______________________________________#
+    def PrintVariables(self):
+        print("===== Optimized Variables =====")
+        for name, param in self.named_parameters():
+            if param.requires_grad:
+                print(name, param.data, param.grad)
+        print("===============================")
